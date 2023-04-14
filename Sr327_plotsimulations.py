@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from math import ceil
 import argparse
-import imageio
+import imageio.v2 as imageio
 import os
 
 fontsize = 24
@@ -68,7 +68,7 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
     righttinput = "V["+str(Nx)+",1]"; rightoutput = "V["+str(Nx)+","+str(Ny)+"]"
     files = []
     data = []
-    path = '../Data/Sr327_Simulator/'
+    path = '../../Data/Sr327_Simulator/'
     if experimental == 0:
         folder = path+str(Nx)+'x'+str(Ny)+'DAT/'       
     else:
@@ -81,6 +81,8 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
         files.append(folder+'Sr327_x1_'+str(input)+'_to_'+str(output)+'.dat') 
     if (type == 'x2'):
         files.append(folder+'Sr327_x2_'+str(input)+'_to_'+str(output)+'.dat') 
+    if (type == 'L'):
+        files.append(folder+'Sr327_L_'+str(input)+'_to_'+str(output)+'.dat') 
     for fname in files:
         data.append(pd.read_csv(fname,header=[0])) 
 
@@ -90,7 +92,8 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
 
         if (type =='m'):
             ax.scatter(data[0]["T"],data[0]["rx"],color='red',s=1.0,label='rx(T)')
-            ax.scatter(data[0]["T"],0.4*data[0]["ry"],color='blue',s=1.0,label='ry(T) [0.4]')
+            # ax.scatter(data[0]["T"],0.4*data[0]["ry"],color='blue',s=1.0,label='ry(T) [0.4]')
+            ax.scatter(data[0]["T"],data[0]["ry"],color='blue',s=1.0,label='ry(T)')
         if (type == 'c')| (type == 'd'):
             ax.scatter(data[0]["T"],2.65*(data[0][leftoutput]-data[0][leftinput])/data[0]["I"],color='purple',s=8.0,marker='.',label='Left Edge') 
             ax.scatter(data[0]["T"],2.65*(data[0][middleoutput]-data[0][middleinput])/data[0]["I"],color='green',s=8.0,marker='+',label='Center') 
@@ -98,6 +101,8 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
         if type == 'c':
             ax.scatter(data[0]["T"],2.65*(data[0][outputpin]-data[0][inputpin])/data[0]["I"],color='black',s=8.0,marker='v',label='Input')
             ax.scatter(data[0]["T"],2.65*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],color='yellow',s=8.0,marker='^',label='Output')
+            # ax.scatter(data[0]["T"],2.65*(data[0][mirroroutputpin]-data[0][mirrorinputpin]),color='yellow',s=8.0,marker='^',label='Voltage')
+            # ax.scatter(data[0]["T"],data[0]["I"],color='purple',s=8.0,marker='.',label='Current') 
         if type == 'd':
             ax.scatter(data[0]["T"],2.65*(data[0][mirroroutputpin ]-data[0][inputpin])/data[0]["I"],color='black',s=8.0,marker='v',label='Input')
             ax.scatter(data[0]["T"],2.65*(data[0][outputpin]-data[0][mirrorinputpin])/data[0]["I"],color='yellow',s=8.0,marker='^',label='Output')
@@ -106,6 +111,12 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
             ax.scatter(data[0]["T"],2.65*(data[0][righttinput]-data[0][leftinput])/data[0]["I"],color='brown',s=8.0,marker='x',label='Bottom Edge')
             ax.scatter(data[0]["T"],2.65*(data[0][mirrorinputpin]-data[0][inputpin])/data[0]["I"],color='black',s=8.0,marker='v',label='Input')
             ax.scatter(data[0]["T"],2.65*(data[0][mirroroutputpin]-data[0][outputpin])/data[0]["I"],color='yellow',s=8.0,marker='^',label='Output')
+        if type == 'L':
+            # ax.scatter(data[0]["T"],data[0]["I"],s=8.0,marker='.',label='Current') 
+            # for x in range(1,8):
+            #     ax.scatter(data[0]["T"],-2.65*(data[0]["V["+str(1+x)+",1]"]-data[0]["V["+str(Nx-x)+",1]"])/data[0]["I"],s=8.0,marker='.',label='Top Edge '+str(x)) 
+            #     ax.scatter(data[0]["T"],2.65*(data[0]["V["+str(1+x)+",1]"]-data[0]["V["+str(Nx-x)+",1]"]),s=8.0,marker='.',label='Voltage '+str(x)) 
+            ax.scatter(data[0]["T"],-2.65*(data[0]["V[8,1]"]-data[0]["V["+str(Nx-7)+",1]"])/data[0]["I"],color='purple',s=8.0,marker='.',label='Top Edge') 
         if type == 'm':
             ax.plot(data[0]["T"],2.65*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],color='orange',marker='^',label='c-axis')
             ax.plot(data[1]["T"],2.65*(data[1][outputpin]-data[1][mirrorinputpin])/data[1]["I"],color='green',marker='^',label='diagonal')
@@ -115,9 +126,9 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
         plt.show()
         if savefile == True:
             if experimental > 0:
-                fig.savefig('../Plots/Sr327/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
+                fig.savefig('../../Plots/Sr327/Simulations/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
             else:
-                fig.savefig('../Plots/Sr327/'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
+                fig.savefig('../../Plots/Sr327/Simulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
 
     elif gif == False:
         x = []; y = []
@@ -138,9 +149,9 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
 
         if (savefile == True)&(gif == False):
             if experimental > 0:
-                fig.savefig('../Plots/Sr327/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
+                fig.savefig('../../Plots/Sr327/Simulations/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
             else:
-                fig.savefig('../Plots/Sr327/'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
+                fig.savefig('../../Plots/Sr327/Simulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
 
     else:
         x = []; y = []
@@ -182,6 +193,8 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
                         ax.set_title('diagonal')
                     if number+1 == 3:
                         ax.set_title('in-plane')
+                    if number+1 == 4:
+                        ax.set_title('long c-axis')
                     heatmap = ax.contourf(X,Y, Z,cmap='RdGy')
                     contouraxes(ax,heatmap,Nx,Ny,False,True)
 
@@ -196,7 +209,7 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
             while ticker < 50:
                 images.append(imageio.imread(gifdir+str(99)+".png"))
                 ticker += 1
-        imageio.mimsave('../Plots/Sr327/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
+        imageio.mimsave('../../Plots/Sr327/Simulations/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
         for i in range(0,100):
             os.remove(gifdir+str(i)+".png")
         os.rmdir(gifdir)
@@ -212,7 +225,7 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--experimental", help="Experimental version number", type=int, default=0)
     parser.add_argument("-g", "--gif", help="Enables giffing the plot", action="store_true")
     args = parser.parse_args()
-    if (args.type == 'c')|(args.type == 'd')|(args.type == 'm')|(args.type == 'x1')|(args.type == 'x2'):
+    if (args.type == 'c')|(args.type == 'd')|(args.type == 'm')|(args.type == 'x1')|(args.type == 'x2')|(args.type == 'L'):
         main(args.pins[0],args.pins[1],args.dimensions[0],args.dimensions[1],type=args.type,contours=args.contours,savefile=args.save,experimental=args.experimental,gif=args.gif)
     else:
         print("No type specified, defaulting to c-axis")

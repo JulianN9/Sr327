@@ -54,4 +54,4 @@ for i in range(1,Nx+1):
 ax.set_xticks(xrange)
 #ax.axes.yaxis.set_visible(False)0
 #plt.show()
-fig.savefig('../Plots/Sr327/circuitdiagram_12x3_clean.svg')
+fig.savefig('../../Plots/Sr327/circuitdiagram_12x3_clean.svg')

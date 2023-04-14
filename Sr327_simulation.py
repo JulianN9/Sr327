@@ -12,6 +12,13 @@ def R_c(T):  # in mu-Ohm-cm (hence factor of 1000.0)
   g = 1.0/(exp((T-40.0)/20.) + 1.)
   return 1000.0*(f*(1.0+0.02*T*T) + 0.08*T*g*(1.-f) + (8.0+0.0005*T)*(1.-g)*(1.-f))
 
+def newR_c(T):
+   # [A,B,C,D,E,F,G,H] = [3.04684366e-17,10.6253646,37.8301757,12.6081855,8.31419655e-02,7.26861931e-17,7.49548715,1.51364092e-02]
+   [A,B,C,D,E,F,G,H] = [ 10, 7.81303088, 40, 12.03121395,  0.03771877,  0.10811644,  7.46400457,  0.01525717]
+   f = 1.0/(np.exp((T-A)/B) + 1.)
+   g = 1.0/(np.exp((T-C)/D) + 1.)
+   return 1000.0*(f*(1.0+E*T*T) + F*T*g*(1.-f) + (G+H*T)*(1.-g)*(1.-f))
+
 # a-b plane resistivity
 def R_ab(T): 
   f = 1.0/(exp((T-20.)/10.) + 1.0)
@@ -19,10 +26,15 @@ def R_ab(T):
 
 # Dividing by size of lattice to get strength of resistors, 160 and 20 are arbitrary scaling factors
 def rx(T,Nx):
-   return 160*R_ab(T)/(Nx-1)
+   # return 160*R_ab(T)/(Nx-1) #For summer 2023 data
+   return R_ab(T)/(Nx-1)
 
 def ry(T,Ny):
-   return 20*R_c(T)/(Ny-1)
+   # return 20*R_c(T)/(Ny-1) #For summer 2023 data
+   return R_c(T)/(Ny-1)
+
+def newry(T,Ny):
+   return newR_c(T)/(Ny-1)
 
 # Convergence speed based on temperature
 def convergence_speed(T):
@@ -33,6 +45,10 @@ def convergence_speed(T):
       cs = 1
    return cs
 
+def convergence_speed_L(T):
+   cs = 10/(1+np.exp(-(1/10)*(T-50)))
+   return cs
+
 Nx = 24 # x nodes
 Ny = 6 # y nodes
 
@@ -41,7 +57,7 @@ def convergec(I_in, I_out, T, V):
    cs = convergence_speed(T) # Get convergence speed
    rxt = rx(T,Nx); ryt = ry(T,Ny) # Get strength of resistors
    delta_Q = 1.0; ctr = 0 # This defines the change between the guess pin and it's neighbors and the count, these are used to determine convergence.
-   while ((delta_Q > 1.0e-6)|(ctr<10000))&(ctr<200000):
+   while ((delta_Q > 1.0e-8)|(ctr<50000))&(ctr<200000):
       V[I_in+1,1] = -0.5 # Sets input and output pins to be constant
       V[I_out+1,-2] = 0.5  # This used to be 1, and the other one used to be 1
       V[0,1:Ny+1] = V[1,1:Ny+1] # These four lines set the edge "ghost" pins to match their neighbors
@@ -131,12 +147,42 @@ def convergex2(I_in, I_out, T, V):
       V[1:Nx+1,1:Ny+1] += dQ
       delta_Q = (dQ[I_out,-1] + dQ[(Nx+1-(I_out)),-1])
       ctr += 1
-   Vlist = [T,rxt,ryt,dQ[I_in,0]/cs]
+   Vlist = [T,rxt,ryt,dQ[I_out,-1]/cs]
    for i in range(1,Nx+1):
       for j in range(1,Ny+1):
          Vlist.append(V[i,j])
    return Vlist
 
+def convergeL(T, V): #For new Geometry 27/03/23
+   # cs = convergence_speed_L(T) # Get convergence speed
+   # cs = convergence_speed(T) # Get convergence speed
+   cs = 10
+   rxt = newry(T,Nx); ryt = rx(T,Ny) # Get strength of resistors
+   err = 1.0 ; ctr = 0 # This defines the change between the guess pin and it's neighbors and the count, these are used to determine convergence.
+   while ((err > 1.0e-20)|(ctr<10000))&(ctr<200000):
+      csp = (cs/(1+np.exp(-(1/500)*(10000-ctr))))
+      V[1,1:-1] = -0.5 # Sets input and output pins to be constant
+      V[-2,1:-1] = 0.5  # This used to be 1, and the other one used to be 1
+      V[0,1:Ny+1] = V[1,1:Ny+1] # These four lines set the edge "ghost" pins to match their neighbors
+      V[-1,1:Ny+1] = V[-2,1:Ny+1]
+      V[1:Nx+1,0] = V[1:Nx+1,1]
+      V[1:Nx+1,-1] = V[1:Nx+1,-2]
+      
+      # Calculating the change based on Ohm's law
+      dQ = csp*( (-2*V[1:Nx+1,1:Ny+1] + V[0:Nx,1:Ny+1] + V[2:Nx+2,1:Ny+1])/rxt \
+         + (-2*V[1:Nx+1,1:Ny+1] + V[1:Nx+1,0:Ny] + V[1:Nx+1,2:Ny+2])/ryt  ) 
+      
+      # Updating the matrix and convergence terms
+      V[1:Nx+1,1:Ny+1] += dQ
+
+      err = np.abs(np.sum(dQ[1:Nx+1,1:Ny+1])/(Nx*Ny))
+      print(err)
+      ctr += 1
+   Vlist = [T,rxt,ryt,dQ[0,1]/csp] # Setting the output lists
+   for i in range(1,Nx+1):
+      for j in range(1,Ny+1):
+         Vlist.append(V[i,j])
+   return Vlist
 
 # Main simulate function
 def simulate(I_in,I_out,type = 0):
@@ -163,6 +209,12 @@ def simulate(I_in,I_out,type = 0):
       for Tctr in range(0,N):
          T = 300.0-Tctr*(300.-2.)/(N-1)
          data.append(convergex2(I_in,I_out,T,V))
+   elif type == 4:
+      typestr = 'L'
+      for Tctr in range(0,N):
+         T = 300.0-Tctr*(300.-2.)/(N-1)
+         data.append(convergeL(T,V))
+         V = np.zeros([Nx+2,Ny+2])
    else:
       print('Error')
 
@@ -171,7 +223,7 @@ def simulate(I_in,I_out,type = 0):
       for j in range(1,Ny+1):
          headerlist.append('V['+str(i)+','+str(j)+']')
    df = pd.DataFrame(data) # Making a dataframe from the data
-   path = '../../Data/Sr327_Simulator/test13_'+str(Nx)+'x'+str(Ny)+'DAT/' # Output path name
+   path = '../../Data/Sr327_Simulator/'+str(Nx)+'x'+str(Ny)+'DAT/' # Output path name
    if os.path.exists(path) == False:
       os.mkdir(path)
    df.to_csv(path+'Sr327_'+typestr+'_'+str(I_in)+'_to_'+str(I_out)+'.dat', index=False, header=headerlist)
@@ -192,10 +244,10 @@ if __name__ == "__main__":
    # guessinput, guessoutput = args.pins
 
    # # These lines define an sets of input and output pins.
-   input = []; output = []
-   for i in range(1, ceil(Nx/2)+1):
-      input.append(i)
-      output.append(i+1)
+   # input = []; output = []
+   # for i in range(1, ceil(Nx/2)+1):
+   #    input.append(i)
+   #    output.append(i+1)
    # for i in range(2, ceil(Nx/2)+1):
    #    input.append(i)
    #    output.append(i-1)
@@ -209,8 +261,8 @@ if __name__ == "__main__":
    # # These process the simulations with multi-threading over the sets of input-output pins for a single type.
    # with Pool(processes=6) as pool:
    #    pool.starmap(simulate, product(input, repeat=2))
-   with Pool(processes=6) as pool:
-      pool.starmap(simulate, zip(input,output,repeat(2)))
+   # with Pool(processes=6) as pool:
+   #    pool.starmap(simulate, zip(input,output,repeat(2)))
    # with Pool(processes=6) as pool2:
    #    pool2.starmap(simulate, zip(input,output,repeat(2)))
 
@@ -220,6 +272,7 @@ if __name__ == "__main__":
    # types = [0,1,2,3]
    # with Pool(processes=4) as pool:
    #   pool.starmap(simulate, zip(repeat(guessinput), repeat(guessoutput), types))
-   #simulate(guessinput,guessoutput,2)
+   # simulate(guessinput,guessoutput,2)
 
    # # If you want to just simulate one particular set of guesses with a type use simulate() here
+   simulate(1,2,type=4)
