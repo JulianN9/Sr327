@@ -2,11 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from math import exp, ceil, floor
 from scipy import integrate
+from scipy import interpolate
 from scipy.optimize import curve_fit
+from Sr327_loaddata import combineDATAnLARA, rhofactor
 import sympy
 import pandas as pd
 
 # If this is right then the effective result is two different paths that compete for transport. The law here is resistors in parallel. This indicates that the general resistivity is like rho a-c, but then there is some other method of transport.
+
+A = 1260*(23)**3*(10**(-3))**2
+L = 0.46*10**(-3)
 
 def R_ab(T): 
   f = 1/(np.exp((T-20)/10) + 1)
@@ -18,6 +23,9 @@ def R_ab(T):
 def Gamma(T,gamma):
     return gamma*R_ab(T)
 
+def ATGamma(T,gamma,C):
+    return gamma*R_ab(T)+C
+
 def AT(T,A,B):
     return A*np.log(B/T)
 
@@ -28,21 +36,34 @@ def ATlin(T,A,B):
     return A*T+B
 
 def fit(T,gamma,A,B):
-    rho = 1/(1/Gamma(T,gamma)+1/AT(T,A,B))
+    rho = 1/(1/Gamma(T,gamma)+1/ATGamma(T,A,B))
     return rho
 
 #Reading Data
-path = '../../Data/Julian_Sr327_Tom_data_2022/isolation_c_cooling_down_2/Data.csv'
-header = ['Index','Temperature','SignalX','SignalY','Capacitancex','Capacitancey']
-data = pd.read_csv(path, skiprows=1, names=header)
-rhoc = np.sqrt(data[header[2]]**2+data[header[3]])
-rhoc = rhoc.to_numpy()
-T = data[header[1]]
+# path = '../../Data/Julian_Sr327_Tom_data_2022/isolation_c_cooling_down_2/Data.csv'
+# header = ['Index','Temperature','SignalX','SignalY','Capacitancex','Capacitancey']
+# data = pd.read_csv(path, skiprows=1, names=header)
+# rhoc = np.sqrt(data[header[2]]**2+data[header[3]])
+# rhoc = rhoc.to_numpy()
+# T = data[header[1]]
 
-guess = [0.5,2000,1000]
+j_path = '../../Data/Sr327/Julian_Tom_data/'
+d_path = '../../Data/Sr327/Di_Tom_data/'
+cxcombined = combineDATAnLARA(j_path+'Version4Data/coolingdownP1',j_path+'Version4Data/coolingdownP1signal')
+cxcombinedtwo = combineDATAnLARA(j_path+'Version4Data/coolingdownP2',j_path+'Version4Data/coolingdownP2signal')
+cxcombinedfour = combineDATAnLARA(j_path+'Version4Data/heatingupP1',j_path+'Version4Data/heatingupP1signal')
+ndata = pd.concat([cxcombined[(cxcombined['Temperature']>146)&(cxcombined['Temperature']<292)]+0.0000015,cxcombinedfour[(cxcombinedfour['Temperature']>=7)&(cxcombinedfour['Temperature']<=146)].iloc[::-1],cxcombined[cxcombined['Temperature']<7],cxcombinedtwo])
+
+rhoc_raw = 100*10**(-3)*rhofactor(5,1200,A,L)*ndata['SignalR']/83.35
+T_raw = ndata['Temperature']
+T = np.linspace(4.5,291,100)
+R_i = interpolate.interp1d(T_raw,rhoc_raw)
+rhoc = R_i(T)
+
+guess = [1/1.5,0.01,9]
 params, cov = curve_fit(fit,T,rhoc, p0=guess)
 fitresults = fit(T,params[0],params[1],params[2])
-fitresults = fitresults.to_numpy()
+# fitresults = fitresults.to_numpy()
 
 print(params)
 print(cov)
@@ -54,15 +75,16 @@ fig, (a0, a1) = plt.subplots(2,1, sharex='col', gridspec_kw={'height_ratios': [3
 a0.plot(T,rhoc,ls=':')
 a0.plot(T,fit(T,params[0],params[1],params[2]))
 a0.plot(T,Gamma(T,params[0]),c='k',ls='--')
-a0.plot(T,AT(T,params[1],params[2]),c='k',ls='--')
+a0.plot(T,ATGamma(T,params[1],params[2]),c='k',ls='--')
 a0.plot(T,Gamma(T,guess[0]),c='k',ls='-.')
-a0.plot(T,AT(T,guess[1],guess[2]),c='k',ls='-.')
-a0.set_ylim(0,5)
-a0.set_xlim(0,330)
+a0.plot(T,ATGamma(T,guess[1],guess[2]),c='k',ls='-.')
+a0.set_ylim(0,13)
+a0.set_xlim(0,300)
 # plt.show()
 
 # Residuals:
 residual = rhoc - fitresults
 a1.plot(T,residual)
 a1.axhline(c='k')
+a1.set_xlim(0,300)
 plt.show()

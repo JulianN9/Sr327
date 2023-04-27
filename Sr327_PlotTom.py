@@ -19,12 +19,13 @@ import csv
 
 #Reading Data
 # path = '../../Data/Julian_Sr327_Tom_data_2022/'
-path = '../../Data/SR327C/'
+j_path = '../../Data/Sr327/Julian_Tom_data/Di_sample/'
+d_path = '../../Data/Sr327/Di_Tom_data/'
 header = [['SignalY','SignalX','Temperature','Unknown'],['Index','Temperature','SignalX','SignalY','Capacitancex','Capacitancey']]
-# files = [['Sr327_Dec_05_2017_1_new.lvm',0,'Original c-axis'],['isolation_c_cooling_down_2/Data.csv',1,'New Iso c-axis'],['isolation_d_coolingdown/Data.csv',1,'New Iso Diagonal'],['isolation_x_coolingdown/Data.csv',1,'New Iso In-Plane']]
+files = [[d_path+'Sr327_Dec_05_2017_1_new.lvm',0,'Original c-axis'],[j_path+'isolation_c_cooling_down_2/Data.csv',1,'New Iso c-axis'],[j_path+'isolation_d_coolingdown/Data.csv',1,'New Iso Diagonal'],[j_path+'isolation_x_coolingdown/Data.csv',1,'New Iso In-Plane']]
 # files = [['Sr327_Dec_05_2017_1_new.lvm',0,'Original c-axis'],['isolation_c_cooling_down_2/Data.csv',1,'New New C long']]
 # files = [[path+'Sr327_Dec_05_2017_1_new.lvm',0,'Original c-axis'],[path+'Disample1_c/Data.csv',1,'New c-axis'],[path+'Disample1_diagonal_coolingdown/Data.csv',1,'New Diagonal'],[path+'Disample1_inplane_coolingdown/Data.csv',1,'New In-Plane']]
-files= [[path+'coolingdown_3/Data.csv',1,'3'],[path+'coolingdown_2/Data.csv',1,'2']]
+# files= [[path+'coolingdown_3/Data.csv',1,'3'],[path+'coolingdown_2/Data.csv',1,'2']]
 heating = False
 if heating == True:
     files.append([path+'Disample1_c_heatingup/Data.csv',1,'New Heating Up'])

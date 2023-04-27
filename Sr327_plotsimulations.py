@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from math import ceil
+from pathlib import Path
 import argparse
 import imageio.v2 as imageio
 import os
@@ -22,23 +23,19 @@ def f(data,X,Y,T):
     return Z
 
 def RVTaxes(ax,ur = False):
+    ax.set_xlabel(r'Temperature  (K)',fontsize=fontsize)
+    ax.set_ylabel(r'$\rho(T)$  (a.u.)',fontsize=fontsize)
+    ax.set_yticks([])
+    ax.legend(loc='upper right',prop={'size': 10})
+    ax.tick_params(axis='x', labelsize=16)
     if ur == False:
-        ax.set_xlabel(r'$T$  (K)',fontsize=fontsize)
-        ax.set_ylabel(r'$\rho(T)$  (a.u.)',fontsize=fontsize)
-        ax.legend(loc='upper right',prop={'size': 10})
         ax.set_xlim(0,300)
-        ax.set_yticks([])
-        ax.tick_params(axis='x', labelsize=16)
-        ax.tick_params(axis='y', labelsize=16)
-    else:
-        ax.set_xlabel(r'$T$  (K)',fontsize=16)
-        ax.set_ylabel(r'$\rho(T)$  (a.u.)',fontsize=16)
-        ax.legend(loc='upper right')
+        ax.legend(fontsize='16')
 
-def contouraxes(ax,heatmap,Nx,Ny,axtitle=True,gift = False):
+def contouraxes(ax,heatmap,Nx,Ny,axtitle=1,gift = False,mixed = 'none'):
     ax.set_xticks([1,ceil(Nx/2),Nx])
     ax.set_yticks([1,ceil(Ny/2),Ny])
-    if gift == False:
+    if (gift == False)&(mixed == 'none'):
         ax.tick_params(axis='x', labelsize=fontsize)
         ax.tick_params(axis='y', labelsize=fontsize)
         if axtitle == True:
@@ -49,16 +46,37 @@ def contouraxes(ax,heatmap,Nx,Ny,axtitle=True,gift = False):
         cbr.ax.get_yaxis().set_ticks([-0.5,0,0.5])
         cbr.ax.tick_params(labelsize=fontsize)
         cbr.ax.set_yticklabels(['-0.5','0','0.5'])
+    # elif(gift==True):
+    #     ax.set_xticks([])
+    #     ax.set_yticks([])
+    #     ax.tick_params(axis='x')
+    #     ax.tick_params(axis='y')
+    #     if axtitle > 0:
+    #         ax.set_xlabel('a-b plane')
+    #         ax.set_ylabel('c-axis')
+        # cbr = plt.colorbar(heatmap,ax=ax)
+        # cbr.set_label('Voltage (V)', rotation=270)
+        # cbr.ax.get_yaxis().set_ticks([-0.5,0,0.5])
+        # cbr.ax.set_yticklabels(['-0.5','0','0.5'])
     else:
-        ax.tick_params(axis='x')
-        ax.tick_params(axis='y')
-        if axtitle == True:
+        if axtitle == 2:
+            ax.set_ylabel('a-b plane')
+            ax.set_xlabel('c-axis')
+        elif axtitle > 0:
             ax.set_xlabel('a-b plane')
             ax.set_ylabel('c-axis')
-        cbr = plt.colorbar(heatmap,ax=ax)
-        cbr.set_label('Voltage (V)', rotation=270)
-        cbr.ax.get_yaxis().set_ticks([-0.5,0,0.5])
-        cbr.ax.set_yticklabels(['-0.5','0','0.5'])
+        if(mixed == 'top'):
+            ax.set_xticks([])
+            ax.set_yticks([])
+        if(mixed == 'left'):
+            ax.set_xticks([])
+            if (gift==False):
+                ax.set_ylabel(r'$\bf{300 K}$' '\n' 'c-axis')
+        if(mixed == 'corner'):
+            if (gift==False):
+                ax.set_ylabel(r'$\bf{2 K}$' '\n' 'c-axis')
+        if(mixed == 'bottom'):
+            ax.set_yticks([])
 
 def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimental = 0, gif = False):
     inputpin = "V["+str(input+1)+",1]"; outputpin = "V["+str(output+1)+","+str(Ny)+"]"
@@ -73,6 +91,7 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
         folder = path+str(Nx)+'x'+str(Ny)+'DAT/'       
     else:
         folder = path+'test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'DAT/'
+    L_check = Path(folder+'Sr327_L_'+str(input)+'_to_'+str(output)+'.dat')
     if (type == 'c') | (type == 'm'):
         files.append(folder+'Sr327_c_'+str(input)+'_to_'+str(output)+'.dat') 
     if (type == 'd') | (type == 'm'):
@@ -81,19 +100,19 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
         files.append(folder+'Sr327_x1_'+str(input)+'_to_'+str(output)+'.dat') 
     if (type == 'x2'):
         files.append(folder+'Sr327_x2_'+str(input)+'_to_'+str(output)+'.dat') 
-    if (type == 'L'):
+    if (type == 'L')| ((type == 'm')&(L_check.is_file() == True)):
         files.append(folder+'Sr327_L_'+str(input)+'_to_'+str(output)+'.dat') 
     for fname in files:
         data.append(pd.read_csv(fname,header=[0])) 
 
     if (contours == 0)&(gif==False):
-        fig = plt.figure(figsize=(8,6))
-        ax = fig.add_axes([0.2,0.2,0.7,0.6])
+        fig = plt.figure(figsize=(10,8))
+        ax = fig.add_axes([0.1,0.1,0.85,0.85])
 
-        if (type =='m'):
-            ax.scatter(data[0]["T"],data[0]["rx"],color='red',s=1.0,label='rx(T)')
-            # ax.scatter(data[0]["T"],0.4*data[0]["ry"],color='blue',s=1.0,label='ry(T) [0.4]')
-            ax.scatter(data[0]["T"],data[0]["ry"],color='blue',s=1.0,label='ry(T)')
+        if (type =='m')|(type == 'c'):
+            ax.scatter(data[0]["T"],0.36*data[0]["rx"],color='red',s=4.0,label= r'$\rho_{ab}$(T)')
+            ax.scatter(data[0]["T"],0.36*data[0]["ry"],color='blue',s=4.0,label= r'$\rho_c$(T)')
+            # ax.scatter(data[0]["T"],data[0]["ry"],color='blue',s=1.0,label='ry(T)')
         if (type == 'c')| (type == 'd'):
             ax.scatter(data[0]["T"],2.65*(data[0][leftoutput]-data[0][leftinput])/data[0]["I"],color='purple',s=8.0,marker='.',label='Left Edge') 
             ax.scatter(data[0]["T"],2.65*(data[0][middleoutput]-data[0][middleinput])/data[0]["I"],color='green',s=8.0,marker='+',label='Center') 
@@ -110,18 +129,21 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
             ax.scatter(data[0]["T"],2.65*(data[0][rightoutput]-data[0][leftoutput])/data[0]["I"],color='purple',s=8.0,marker='.',label='Top Edge') 
             ax.scatter(data[0]["T"],2.65*(data[0][righttinput]-data[0][leftinput])/data[0]["I"],color='brown',s=8.0,marker='x',label='Bottom Edge')
             ax.scatter(data[0]["T"],2.65*(data[0][mirrorinputpin]-data[0][inputpin])/data[0]["I"],color='black',s=8.0,marker='v',label='Input')
-            ax.scatter(data[0]["T"],2.65*(data[0][mirroroutputpin]-data[0][outputpin])/data[0]["I"],color='yellow',s=8.0,marker='^',label='Output')
+            ax.scatter(data[0]["T"],2.65*(data[0][mirroroutputpin]-data[0][outputpin])/data[0]["I"],color='red',s=8.0,marker='^',label='Output')
+            # ax.scatter(data[0]["T"],data[0]["rx"],color='red',s=4.0,label= r'$\rho_{ab}$(T)')
         if type == 'L':
             # ax.scatter(data[0]["T"],data[0]["I"],s=8.0,marker='.',label='Current') 
-            # for x in range(1,8):
-            #     ax.scatter(data[0]["T"],-2.65*(data[0]["V["+str(1+x)+",1]"]-data[0]["V["+str(Nx-x)+",1]"])/data[0]["I"],s=8.0,marker='.',label='Top Edge '+str(x)) 
-            #     ax.scatter(data[0]["T"],2.65*(data[0]["V["+str(1+x)+",1]"]-data[0]["V["+str(Nx-x)+",1]"]),s=8.0,marker='.',label='Voltage '+str(x)) 
-            ax.scatter(data[0]["T"],-2.65*(data[0]["V[8,1]"]-data[0]["V["+str(Nx-7)+",1]"])/data[0]["I"],color='purple',s=8.0,marker='.',label='Top Edge') 
+            for x in range(1,8):
+                ax.scatter(data[0]["T"],-2.65*(data[0]["V["+str(1+x)+",1]"]-data[0]["V["+str(Nx-x)+",1]"])/data[0]["I"],s=8.0,marker='.',label='long c-axis '+str(x)) 
+                # ax.scatter(data[0]["T"],2.65*(data[0]["V["+str(1+x)+",1]"]-data[0]["V["+str(Nx-x)+",1]"]),s=8.0,marker='.',label='Voltage '+str(x)) 
+            # ax.scatter(data[0]["T"],-2.65*(data[0]["V[8,1]"]-data[0]["V["+str(Nx-7)+",1]"])/data[0]["I"],color='purple',s=8.0,marker='.',label='long c-axis') 
         if type == 'm':
             ax.plot(data[0]["T"],2.65*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],color='orange',marker='^',label='c-axis')
             ax.plot(data[1]["T"],2.65*(data[1][outputpin]-data[1][mirrorinputpin])/data[1]["I"],color='green',marker='^',label='diagonal')
-            ax.plot(data[2]["T"],2.65*(data[2][mirroroutputpin]-data[2][outputpin])/data[2]["I"],color='red',marker='^',label='in-plane')
+            ax.plot(data[2]["T"],(Ny/(Nx-output-input))*2.65*(data[2][mirroroutputpin]-data[2][outputpin])/data[2]["I"],color='red',marker='^',label='in-plane')
             #ax.plot(data[2]["T"],2.65*(data[2][mirrorinputpin]-data[2][inputpin])/data[2]["I"],color='red',marker='^')
+            if L_check.is_file() == True:
+                ax.plot(data[3]["T"],-(0.4/2.45)*2.65*(data[3]["V[8,1]"]-data[3]["V["+str(Nx-7)+",1]"])/data[3]["I"],color='purple',marker='^',label='long c-axis') 
         RVTaxes(ax)
         plt.show()
         if savefile == True:
@@ -137,17 +159,53 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
         for j in range(1,Ny+1):
             y.append(j)
         X, Y = np.meshgrid(x,y)
+        if (type == 'm')&(L_check.is_file() == True):
+            fig = plt.figure(figsize=(16,5))
+            grid = plt.GridSpec(4,16, hspace=0.4, wspace=0.8)
+            c_low_ax = fig.add_subplot(grid[:-2,0:4])
+            d_low_ax = fig.add_subplot(grid[:-2,4:8])
+            x_low_ax = fig.add_subplot(grid[:-2,8:12])
+            L_low_ax = fig.add_subplot(grid[:-2,12:])
+            c_high_ax = fig.add_subplot(grid[-2:,0:4])
+            d_high_ax = fig.add_subplot(grid[-2:,4:8])
+            x_high_ax = fig.add_subplot(grid[-2:,8:12])
+            L_high_ax = fig.add_subplot(grid[-2:,12:])
+            contour_axes = [[c_low_ax,c_high_ax],[d_low_ax,d_high_ax],[x_low_ax,x_high_ax],[L_low_ax,L_high_ax]]
+            for number, ax in enumerate(contour_axes):
+                heatmap1 = ax[0].contourf(X,Y, f(data[number],x,y,0),cmap='RdGy')
+                heatmap2 = ax[1].contourf(X,Y, f(data[number],x,y,99),cmap='RdGy')
+                if number+1 == 1:
+                    ax[0].set_title('c-axis',fontweight='bold')
+                    contouraxes(ax[0],heatmap1,Nx,Ny,1,mixed='left')
+                    contouraxes(ax[1],heatmap2,Nx,Ny,1,mixed='corner')
+                    cbr = fig.colorbar(heatmap1,ax=contour_axes)
+                    cbr.set_label('Voltage (V)', rotation=270,fontweight='bold')
+                    cbr.ax.get_yaxis().set_ticks([-0.5,0,0.5])
+                    cbr.ax.set_yticklabels(['-0.5','0','0.5'])
+                if number+1 == 2:
+                    ax[0].set_title('diagonal',fontweight='bold')
+                    contouraxes(ax[0],heatmap1,Nx,Ny,1,mixed='top')
+                    contouraxes(ax[1],heatmap2,Nx,Ny,1,mixed='bottom')
+                if number+1 == 3:
+                    ax[0].set_title('in-plane',fontweight='bold')
+                    contouraxes(ax[0],heatmap1,Nx,Ny,1,mixed='top')
+                    contouraxes(ax[1],heatmap2,Nx,Ny,1,mixed='bottom')
+                if number+1 == 4:
+                    ax[0].set_title('long c-axis',fontweight='bold')
+                    contouraxes(ax[0],heatmap1,Nx,Ny,2,mixed='top')
+                    contouraxes(ax[1],heatmap2,Nx,Ny,2,mixed='bottom')
+            plt.show()
+        else:
+            Z = f(data[0],x,y,contours-1)
+            fig = plt.figure(figsize=(6,4))
+            ax = fig.add_axes([0.2,0.2,0.7,0.6])
+            heatmap = ax.contourf(X,Y, Z,cmap='RdGy')
 
-        Z = f(data[0],x,y,contours-1)
-        fig = plt.figure(figsize=(6,4))
-        ax = fig.add_axes([0.2,0.2,0.7,0.6])
-        heatmap = ax.contourf(X,Y, Z,cmap='RdGy')
+            contouraxes(ax,heatmap,Nx,Ny)
 
-        contouraxes(ax,heatmap,Nx,Ny)
+            plt.show()
 
-        plt.show()
-
-        if (savefile == True)&(gif == False):
+        if (savefile == True):
             if experimental > 0:
                 fig.savefig('../../Plots/Sr327/Simulations/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
             else:
@@ -176,39 +234,83 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
                 images.append(imageio.imread(gifdir+str(i)+".png"))     
                 plt.close(fig=fig)       
         else:
-            for i in range(0,100):
-                fig = plt.figure(figsize=(8,5))
-                grid = plt.GridSpec(6,4, hspace=0.2, wspace=0.2)
-                main_ax = fig.add_subplot(grid[:-1,:-1])
-            
-                c_ax = fig.add_subplot(grid[0:1,-1:])
-                d_ax = fig.add_subplot(grid[2:-3,-1:])
-                x_ax = fig.add_subplot(grid[-2:-1,-1:])
-                contour_axes = [c_ax,d_ax,x_ax]
-                for number, ax in enumerate(contour_axes):
-                    Z = f(data[number],x,y,i)
-                    if number+1 == 1:
-                        ax.set_title('c-axis')
-                    if number+1 == 2:
-                        ax.set_title('diagonal')
-                    if number+1 == 3:
-                        ax.set_title('in-plane')
-                    if number+1 == 4:
-                        ax.set_title('long c-axis')
-                    heatmap = ax.contourf(X,Y, Z,cmap='RdGy')
-                    contouraxes(ax,heatmap,Nx,Ny,False,True)
+            if L_check.is_file() == True:
+                for i in range(0,100):
+                    fig = plt.figure(figsize=(12,6))
+                    grid = plt.GridSpec(8,4, hspace=0.2, wspace=0.2)
+                    main_ax = fig.add_subplot(grid[:-1,:-1])
+                
+                    c_ax = fig.add_subplot(grid[0:1,-1:])
+                    d_ax = fig.add_subplot(grid[2:3,-1:])
+                    x_ax = fig.add_subplot(grid[4:-3,-1:])
+                    L_ax = fig.add_subplot(grid[-2:-1,-1:])
+                    contour_axes = [c_ax,d_ax,x_ax,L_ax]
+                    for number, ax in enumerate(contour_axes):
+                        Z = f(data[number],x,y,i)
+                        heatmap = ax.contourf(X,Y, Z,cmap='RdGy')
+                        if number+1 == 1:
+                            ax.set_title('c-axis')
+                            cbr = fig.colorbar(heatmap,ax=contour_axes)
+                            cbr.set_label('Voltage (V)', rotation=270,fontweight='bold')
+                            cbr.ax.get_yaxis().set_ticks([-0.5,0,0.5])
+                            cbr.ax.set_yticklabels(['-0.5','0','0.5'])
+                            contouraxes(ax,heatmap,Nx,Ny,1,mixed='top')
+                        if number+1 == 2:
+                            ax.set_title('diagonal')
+                            contouraxes(ax,heatmap,Nx,Ny,1,mixed='top')
+                        if number+1 == 3:
+                            ax.set_title('in-plane')
+                            contouraxes(ax,heatmap,Nx,Ny,1,mixed='top')
+                        if number+1 == 4:
+                            ax.set_title('long c-axis')
+                            contouraxes(ax,heatmap,Nx,Ny,2,mixed='top')
+                        # contouraxes(ax,heatmap,Nx,Ny,0,True)
+                        
 
-                main_ax.plot(data[0]["T"][:i+1],2.65*(data[0][mirroroutputpin][:i+1]-data[0][mirrorinputpin][:i+1])/data[0]["I"][:i+1],color='orange',marker='^',label='c-axis')
-                main_ax.plot(data[1]["T"][:i+1],2.65*(data[1][outputpin][:i+1]-data[1][mirrorinputpin][:i+1])/data[1]["I"][:i+1],color='green',marker='^',label='diagonal')
-                main_ax.plot(data[2]["T"][:i+1],2.65*(data[2][mirroroutputpin][:i+1]-data[2][outputpin][:i+1])/data[2]["I"][:i+1],color='red',marker='^',label='in-plane')
-                RVTaxes(main_ax,True)
-                fig.savefig(gifdir+str(i)+".png")
-                images.append(imageio.imread(gifdir+str(i)+".png"))
-                plt.close(fig=fig)       
-            ticker = 0
-            while ticker < 50:
-                images.append(imageio.imread(gifdir+str(99)+".png"))
-                ticker += 1
+                    main_ax.plot(data[0]["T"][:i+1],2.65*(data[0][mirroroutputpin][:i+1]-data[0][mirrorinputpin][:i+1])/data[0]["I"][:i+1],color='orange',marker='^',label='c-axis')
+                    main_ax.plot(data[1]["T"][:i+1],2.65*(data[1][outputpin][:i+1]-data[1][mirrorinputpin][:i+1])/data[1]["I"][:i+1],color='green',marker='^',label='diagonal')
+                    main_ax.plot(data[2]["T"][:i+1],2.65*(data[2][mirroroutputpin][:i+1]-data[2][outputpin][:i+1])/data[2]["I"][:i+1],color='red',marker='^',label='in-plane')
+                    main_ax.plot(data[3]["T"][:i+1],-(0.4/2.45)*2.65*(data[3]["V[8,1]"][:i+1]-data[3]["V["+str(Nx-7)+",1]"][:i+1])/data[3]["I"][:i+1],color='purple',marker='^',label='long c-axis') 
+                    RVTaxes(main_ax,True)
+                    fig.savefig(gifdir+str(i)+".png")
+                    images.append(imageio.imread(gifdir+str(i)+".png"))
+                    plt.close(fig=fig)       
+                ticker = 0
+                while ticker < 50:
+                    images.append(imageio.imread(gifdir+str(99)+".png"))
+                    ticker += 1
+            else:
+                for i in range(0,100):
+                    fig = plt.figure(figsize=(8,5))
+                    grid = plt.GridSpec(6,4, hspace=0.2, wspace=0.2)
+                    main_ax = fig.add_subplot(grid[:-1,:-1])
+                
+                    c_ax = fig.add_subplot(grid[0:1,-1:])
+                    d_ax = fig.add_subplot(grid[2:-3,-1:])
+                    x_ax = fig.add_subplot(grid[-2:-1,-1:])
+                    contour_axes = [c_ax,d_ax,x_ax]
+                    for number, ax in enumerate(contour_axes):
+                        Z = f(data[number],x,y,i)
+                        if number+1 == 1:
+                            ax.set_title('c-axis')
+                        if number+1 == 2:
+                            ax.set_title('diagonal')
+                        if number+1 == 3:
+                            ax.set_title('in-plane')
+                        heatmap = ax.contourf(X,Y, Z,cmap='RdGy')
+                        contouraxes(ax,heatmap,Nx,Ny,0,True)
+
+                    main_ax.plot(data[0]["T"][:i+1],2.65*(data[0][mirroroutputpin][:i+1]-data[0][mirrorinputpin][:i+1])/data[0]["I"][:i+1],color='orange',marker='^',label='c-axis')
+                    main_ax.plot(data[1]["T"][:i+1],2.65*(data[1][outputpin][:i+1]-data[1][mirrorinputpin][:i+1])/data[1]["I"][:i+1],color='green',marker='^',label='diagonal')
+                    main_ax.plot(data[2]["T"][:i+1],2.65*(data[2][mirroroutputpin][:i+1]-data[2][outputpin][:i+1])/data[2]["I"][:i+1],color='red',marker='^',label='in-plane')
+                    RVTaxes(main_ax,True)
+                    fig.savefig(gifdir+str(i)+".png")
+                    images.append(imageio.imread(gifdir+str(i)+".png"))
+                    plt.close(fig=fig)       
+                ticker = 0
+                while ticker < 50:
+                    images.append(imageio.imread(gifdir+str(99)+".png"))
+                    ticker += 1
         imageio.mimsave('../../Plots/Sr327/Simulations/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
         for i in range(0,100):
             os.remove(gifdir+str(i)+".png")
