@@ -4,12 +4,14 @@ from math import exp, ceil, floor
 from scipy import integrate
 from scipy import interpolate
 from scipy.optimize import curve_fit
-from Sr327_loaddata import combineDATAnLARA, rhofactor
+from Sr327 import rhofactor, loadqualifierdata
 import sympy
 import pandas as pd
 
 # If this is right then the effective result is two different paths that compete for transport. The law here is resistors in parallel. This indicates that the general resistivity is like rho a-c, but then there is some other method of transport.
 
+j_path = '../../Data/Sr327/Julian_Tom_data/'
+d_path = '../../Data/Sr327/Di_Tom_data/'
 A = 1260*(23)**3*(10**(-3))**2
 L = 0.46*10**(-3)
 
@@ -47,15 +49,9 @@ def fit(T,gamma,A,B):
 # rhoc = rhoc.to_numpy()
 # T = data[header[1]]
 
-j_path = '../../Data/Sr327/Julian_Tom_data/'
-d_path = '../../Data/Sr327/Di_Tom_data/'
-cxcombined = combineDATAnLARA(j_path+'Version4Data/coolingdownP1',j_path+'Version4Data/coolingdownP1signal')
-cxcombinedtwo = combineDATAnLARA(j_path+'Version4Data/coolingdownP2',j_path+'Version4Data/coolingdownP2signal')
-cxcombinedfour = combineDATAnLARA(j_path+'Version4Data/heatingupP1',j_path+'Version4Data/heatingupP1signal')
-ndata = pd.concat([cxcombined[(cxcombined['Temperature']>146)&(cxcombined['Temperature']<292)]+0.0000015,cxcombinedfour[(cxcombinedfour['Temperature']>=7)&(cxcombinedfour['Temperature']<=146)].iloc[::-1],cxcombined[cxcombined['Temperature']<7],cxcombinedtwo])
-
-rhoc_raw = 100*10**(-3)*rhofactor(5,1200,A,L)*ndata['SignalR']/83.35
-T_raw = ndata['Temperature']
+data = loadqualifierdata()
+rhoc_raw = data[4][0]['SignalR']*data[4][2]
+T_raw = data[4][0]['Temperature']
 T = np.linspace(4.5,291,100)
 R_i = interpolate.interp1d(T_raw,rhoc_raw)
 rhoc = R_i(T)

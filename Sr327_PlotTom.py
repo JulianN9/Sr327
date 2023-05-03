@@ -28,9 +28,9 @@ files = [[d_path+'Sr327_Dec_05_2017_1_new.lvm',0,'Original c-axis'],[j_path+'iso
 # files= [[path+'coolingdown_3/Data.csv',1,'3'],[path+'coolingdown_2/Data.csv',1,'2']]
 heating = False
 if heating == True:
-    files.append([path+'Disample1_c_heatingup/Data.csv',1,'New Heating Up'])
-    files.append([path+'Disample1_diagonal_heatingup/Data.csv',1,'Diagonal Heating Up'])
-    files.append([path+'Disample1_inplane_heatingup/Data.csv',1,'In-Plane Heating Up'])
+    files.append([j_path+'Disample1_c_heatingup/Data.csv',1,'New Heating Up'])
+    files.append([j_path+'Disample1_diagonal_heatingup/Data.csv',1,'Diagonal Heating Up'])
+    files.append([j_path+'Disample1_inplane_heatingup/Data.csv',1,'In-Plane Heating Up'])
 data = []
 for file in files:
     if file[1] == 0:
