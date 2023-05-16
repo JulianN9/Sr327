@@ -66,7 +66,8 @@ print(cov)
 
 # T = np.linspace(1,300)
 
-fig, (a0, a1) = plt.subplots(2,1, sharex='col', gridspec_kw={'height_ratios': [3, 1]})
+fig = plt.figure(figsize=(10,8))
+a0, a1 = fig.subplots(2,1, sharex='col', gridspec_kw={'height_ratios': [3, 1]})
 
 a0.plot(T,rhoc,ls=':')
 a0.plot(T,fit(T,params[0],params[1],params[2]))
@@ -76,6 +77,9 @@ a0.plot(T,Gamma(T,guess[0]),c='k',ls='-.')
 a0.plot(T,ATGamma(T,guess[1],guess[2]),c='k',ls='-.')
 a0.set_ylim(0,13)
 a0.set_xlim(0,300)
+a0.tick_params(axis='x', labelsize=16)
+a0.tick_params(axis='y', labelsize=16)
+a0.set_ylabel('Resistivity (m$\Omega$cm)',fontsize=24)
 # plt.show()
 
 # Residuals:
@@ -83,4 +87,8 @@ residual = rhoc - fitresults
 a1.plot(T,residual)
 a1.axhline(c='k')
 a1.set_xlim(0,300)
+a1.tick_params(axis='x', labelsize=16)
+a1.tick_params(axis='y', labelsize=16)
+a1.set_xlabel('Temperature (K)',fontsize=24)
+fig.savefig('../../Plots/Sr327/HusseyFitting.svg')
 plt.show()
