@@ -120,35 +120,38 @@ def plotolddataRvT(datalist, save, name = ''):
         plt.savefig('../../Plots/Sr327/'+name)
     plt.show()
 
-def plotdata(data, yname, save, name = ''):
-    fig = plt.figure(figsize=(10,8))
-    ax = fig.add_axes([0.1,0.1,0.85,0.85])
+def plotdata(fig,ax,data, yname, save = False, name = '', show = True, scale = False, derive = False,original = True):
     for i in range(len(data)):
-        # T = np.linspace(6,291,100)
-        # Tp = np.linspace(123,291,100)
-        # R = interpolate.interp1d(data[i][0]['Temperature'],data[i][2]*data[i][0][yname])
-        # if i==3:
-        #     print(i)
-        #     ax.plot(Tp,np.gradient(np.gradient(R(Tp))),label=data[i][1],linewidth=3)
-        # else:
-        #     print(i)
-        #     ax.plot(T,np.gradient(np.gradient(R(T))),label=data[i][1],linewidth=3)
-        # if i==0:
-        #     ax.plot(data[i][0]['Temperature'],0.95*data[i][2]*data[i][0][yname]+0.45,label=data[i][1],linewidth=3)        
-        # elif i==2:
-        #     ax.plot(data[i][0]['Temperature'],data[i][2]*data[i][0][yname]+0.45,label=data[i][1],linewidth=3)        
-        # else:
-        ax.plot(data[i][0]['Temperature'],data[i][2]*data[i][0][yname],label=data[i][1],linewidth=3)
+        if derive == True:
+            T = np.linspace(6,291,100)
+            Tp = np.linspace(123,291,100)
+            R = interpolate.interp1d(data[i][0]['Temperature'],data[i][2]*data[i][0][yname])
+            if i==3:
+                ax.plot(Tp,np.gradient(np.gradient(R(Tp))),label=data[i][1],linewidth=4,color = data[i][3])
+            else:
+                ax.plot(T,np.gradient(np.gradient(R(T))),label=data[i][1],linewidth=4,color = data[i][3])
+        elif scale == True:
+            if (i==0)&(original == True):
+                ax.plot(data[i][0]['Temperature'],0.95*data[i][2]*data[i][0][yname]+0.45,label=data[i][1],linewidth=4,color = data[i][3])  
+            elif (i==0)&(original == False):
+                pass
+            elif i==2:
+                ax.plot(data[i][0]['Temperature'],data[i][2]*data[i][0][yname]+0.45,label=data[i][1],linewidth=4,color = data[i][3])        
+            else:
+                ax.plot(data[i][0]['Temperature'],data[i][2]*data[i][0][yname],label=data[i][1],linewidth=4,color = data[i][3])
+        else:
+            ax.plot(data[i][0]['Temperature'],data[i][2]*data[i][0][yname],label=data[i][1],linewidth=4,color = data[i][3])
     ax.set_xlabel(r'Temperature (K)',fontsize=24)
     ax.set_ylabel(r'Resistivity (m$\Omega$cm)',fontsize=24)
     ax.tick_params(axis='x', labelsize=16)
     ax.tick_params(axis='y', labelsize=16)
     # ax.set_ylabel(r'$\rho(T)$   (a.u.)',fontsize=16)
     ax.set_xlim(0,300)
-    ax.legend(fontsize='16')
+    ax.legend(fontsize='16',loc='upper left')
     if save == True:
         fig.savefig('../../Plots/Sr327/Measurements/'+name)
-    plt.show()
+    if show == True:
+        plt.show()
 
 def plotlydata(data, yname):
     fig = go.Figure()
@@ -165,7 +168,7 @@ def loadqualifierdata():
     cxcombinedtwo = combineDATAnLARA(j_path+'Version4Data/coolingdownP2',j_path+'Version4Data/coolingdownP2signal')
     cxcombinedfour = combineDATAnLARA(j_path+'Version4Data/heatingupP1',j_path+'Version4Data/heatingupP1signal')
     ndata = pd.concat([cxcombined[(cxcombined['Temperature']>146)&(cxcombined['Temperature']<292)]+0.0000015,cxcombinedfour[(cxcombinedfour['Temperature']>=7)&(cxcombinedfour['Temperature']<=146)].iloc[::-1],cxcombined[cxcombined['Temperature']<7],cxcombinedtwo])
-    data = [[loadoldDATAlockin(d_path+'Sr327_Dec_05_2017_1_new.lvm'),'original c-axis',1.6],[loadDATAlockin(j_path+'Di_sample/isolation_c_cooling_down_2'),'c-axis',1.6],[loadDATAlockin(j_path+'Di_sample/isolation_d_coolingdown'),'diagonal',1.6],[loadDATAlockin(j_path+'Di_sample/isolation_x_coolingdown'),'in-plane',1.6],[ndata,'long c-axis',100*10**(-3)*rhofactor(5,1200,A,L)/83.35]]
+    data = [[loadoldDATAlockin(d_path+'Sr327_Dec_05_2017_1_new.lvm'),'original c-axis',1.6,'b'],[loadDATAlockin(j_path+'Di_sample/isolation_c_cooling_down_2'),'c-axis',1.6,'C1'],[loadDATAlockin(j_path+'Di_sample/isolation_d_coolingdown'),'diagonal',1.6,'green'],[loadDATAlockin(j_path+'Di_sample/isolation_x_coolingdown'),'in-plane',1.6,'red'],[ndata,'long c-axis',100*10**(-3)*rhofactor(5,1200,A,L)/83.35,'purple']]
     return data
 
 if __name__ == "__main__":
@@ -173,7 +176,9 @@ if __name__ == "__main__":
 
     data = loadqualifierdata()
 
-    plotdata(data,'SignalR',False,'QualifierMeasurementFigure.svg')
+    fig = plt.figure(figsize=(10,8))
+    ax = fig.add_axes([0.1,0.1,0.85,0.85])
+    plotdata(fig,ax,data,'SignalR',False,'QualifierMeasurementFigure.svg',scale=True)
 
 
     # for i in np.linspace(1.76+3*np.pi/2,1.762+3*np.pi/2,10):

@@ -78,15 +78,12 @@ def contouraxes(ax,heatmap,Nx,Ny,axtitle=1,gift = False,mixed = 'none'):
         if(mixed == 'bottom'):
             ax.set_yticks([])
 
-def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimental = 0, gif = False):
-    inputpin = "V["+str(input+1)+",1]"; outputpin = "V["+str(output+1)+","+str(Ny)+"]"
-    mirrorinputpin = "V["+str(Nx-input)+",1]"; mirroroutputpin = "V["+str(Nx-output)+","+str(Ny)+"]"
-    leftinput = "V[1,1]"; leftoutput = "V[1,"+str(Ny)+"]"
-    middleinput = "V["+str(ceil(Nx/2))+",1]"; middleoutput = "V["+str(ceil(Nx/2))+","+str(Ny)+"]"
-    righttinput = "V["+str(Nx)+",1]"; rightoutput = "V["+str(Nx)+","+str(Ny)+"]"
+def loadsimdata(type,Nx,Ny,input,output,experimental,implicit = False):
     files = []
     data = []
     path = '../../Data/Sr327_Simulator/'
+    if implicit == True:
+        path = '../../Data/Sr327_ImplicitSimulator/' 
     if experimental == 0:
         folder = path+str(Nx)+'x'+str(Ny)+'DAT/'       
     else:
@@ -104,6 +101,15 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
         files.append(folder+'Sr327_L_'+str(input)+'_to_'+str(output)+'.dat') 
     for fname in files:
         data.append(pd.read_csv(fname,header=[0])) 
+    return data, L_check
+
+def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimental = 0, gif = False, implicit = False):
+    inputpin = "V["+str(input+1)+",1]"; outputpin = "V["+str(output+1)+","+str(Ny)+"]"
+    mirrorinputpin = "V["+str(Nx-input)+",1]"; mirroroutputpin = "V["+str(Nx-output)+","+str(Ny)+"]"
+    leftinput = "V[1,1]"; leftoutput = "V[1,"+str(Ny)+"]"
+    middleinput = "V["+str(ceil(Nx/2))+",1]"; middleoutput = "V["+str(ceil(Nx/2))+","+str(Ny)+"]"
+    righttinput = "V["+str(Nx)+",1]"; rightoutput = "V["+str(Nx)+","+str(Ny)+"]"
+    data, L_check = loadsimdata(type,Nx,Ny,input,output,experimental,implicit)
 
     if (contours == 0)&(gif==False):
         fig = plt.figure(figsize=(10,8))
@@ -138,7 +144,7 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
                 # ax.scatter(data[0]["T"],2.65*(data[0]["V["+str(1+x)+",1]"]-data[0]["V["+str(Nx-x)+",1]"]),s=8.0,marker='.',label='Voltage '+str(x)) 
             # ax.scatter(data[0]["T"],-2.65*(data[0]["V[8,1]"]-data[0]["V["+str(Nx-7)+",1]"])/data[0]["I"],color='purple',s=8.0,marker='.',label='long c-axis') 
         if type == 'm':
-            ax.plot(data[0]["T"],2.65*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],color='orange',marker='^',label='c-axis')
+            ax.plot(data[0]["T"],2.65*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],color='C1',marker='^',label='c-axis')
             ax.plot(data[1]["T"],2.65*(data[1][outputpin]-data[1][mirrorinputpin])/data[1]["I"],color='green',marker='^',label='diagonal')
             ax.plot(data[2]["T"],(Ny/(Nx-output-input))*2.65*(data[2][mirroroutputpin]-data[2][outputpin])/data[2]["I"],color='red',marker='^',label='in-plane')
             #ax.plot(data[2]["T"],2.65*(data[2][mirrorinputpin]-data[2][inputpin])/data[2]["I"],color='red',marker='^')
@@ -311,7 +317,10 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
                 while ticker < 50:
                     images.append(imageio.imread(gifdir+str(99)+".png"))
                     ticker += 1
-        imageio.mimsave('../../Plots/Sr327/Simulations/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
+        if implicit == False:
+            imageio.mimsave('../../Plots/Sr327/Simulations/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
+        else:
+            imageio.mimsave('../../Plots/Sr327/ImplicitSimulations/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
         for i in range(0,100):
             os.remove(gifdir+str(i)+".png")
         os.rmdir(gifdir)
@@ -328,7 +337,7 @@ if __name__ == "__main__":
     parser.add_argument("-g", "--gif", help="Enables giffing the plot", action="store_true")
     args = parser.parse_args()
     if (args.type == 'c')|(args.type == 'd')|(args.type == 'm')|(args.type == 'x1')|(args.type == 'x2')|(args.type == 'L'):
-        main(args.pins[0],args.pins[1],args.dimensions[0],args.dimensions[1],type=args.type,contours=args.contours,savefile=args.save,experimental=args.experimental,gif=args.gif)
+        main(args.pins[0],args.pins[1],args.dimensions[0],args.dimensions[1],type=args.type,contours=args.contours,savefile=args.save,experimental=args.experimental,gif=args.gif,implicit=True)
     else:
         print("No type specified, defaulting to c-axis")
         main(args.pins[0],args.pins[1],args.dimensions[0],args.dimensions[1],contours=args.contours,savefile=args.save,experimental=args.experimental,gif=args.gif)
