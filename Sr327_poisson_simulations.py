@@ -62,17 +62,31 @@ def poissonmatrix(Nx,Ny,rx,ry,plot=False):
 #     Q[-V_out] = 1
 #     return Q
 
-def chargecalculator(Ainv,Vin,Vout):
-    M = np.matrix([[Ainv[Vin,Vin],Ainv[Vin,-(Nx-Vout)]],[Ainv[-(Nx-Vout),Vin],Ainv[-(Nx-Vout),-(Nx-Vout)]]])
+def chargecalculator(Ainv,Vin,Vout,typestr = 'c',Ny= 5):
+    if typestr == 'c':
+        M = np.matrix([[Ainv[Vin,Vin],Ainv[Vin,-(Nx-Vout)]],[Ainv[-(Nx-Vout),Vin],Ainv[-(Nx-Vout),-(Nx-Vout)]]])
+    elif typestr == 'd':
+        M = np.matrix([[Ainv[Vin,Vin],Ainv[Vin,-Vout]],[Ainv[-Vout,Vin],Ainv[-Vout,-Vout]]])
+    elif typestr == 'x1':
+        M = np.matrix([[Ainv[Vin,Vin],Ainv[Vin,Nx-Vin]],[Ainv[Nx-Vin,Vin],Ainv[Nx-Vin,Nx-Vin]]])
+    elif typestr == 'L':
+        M = np.matrix([[Ainv[Vin,Vin],Ainv[Vin,-Vout]],[Ainv[-Vout,Vin],Ainv[-Vout,-Vout]]])
     Minv = np.linalg.inv(M)
-    V = np.array([-500,500])
+    V = np.array([-0.5,0.5])
     Q = np.dot(Minv,V)
     return Q
 
-def voltagematrix(Ainv,Q,Nx,Ny,Vin,Vout):
+def voltagematrix(Ainv,Q,Nx,Ny,Vin,Vout,typestr = 'c'):
     Qprime = np.zeros(Nx*Ny)
-    Qprime[Vin] = Q[0,0]
-    Qprime[-(Nx-Vout)] = Q[0,1]
+    if typestr == 'c':
+        Qprime[Vin] = Q[0,0]
+        Qprime[-(Nx-Vout)] = Q[0,1]
+    if typestr == 'd':
+        Qprime[Vin] = Q[0,0]
+        Qprime[-Vout] = Q[0,1]
+    if typestr == 'x1':
+        Qprime[Vin] = Q[0,0]
+        Qprime[Nx-Vin] = Q[0,1]    
     V = np.dot(Ainv,Qprime)
     V = V.reshape(Ny,Nx)
     return(V)
@@ -81,32 +95,47 @@ def voltagematrix(Ainv,Q,Nx,Ny,Vin,Vout):
 
 if __name__ == "__main__":
     T = 2; Vin = 5; Vout = 6
-    data = []
+    data = []; datac = []; datad = []; datax1 =[]
     N = 100
-    typestr = 'c'
+    # typestr = 'c'
+    typestrlist = ['c','d','x1']
     for Tctr in range(0,N):
         T = 300.0-Tctr*(300.-2.)/(N-1)
         Rx = rx(T,Nx)/2; Ry = newry(T,Ny)
         Ainv = poissonmatrix(Nx,Ny,Rx,Ry)
-        Q = chargecalculator(Ainv,Vin,Vout)/Ry
-        # print(Q[0,0])
-        V = voltagematrix(Ainv,Q,Nx,Ny,Vin,Vout)
-        # savevoltagematrix(V,Nx,Ny,'c',Vin,Vout,T,Rx,Ry)
-        # plt.contourf(V,cmap='RdGy')
-        # plt.show()
-        Vlist = [T,Rx,Ry,np.abs((V[0,Vin]-V[1,Vin])/Ry)]
-        for i in range(1,Nx+1):
-            for j in range(1,Ny+1):
-                Vlist.append(V[j-1,i-1])
-        data.append(Vlist)
+        for typestr in typestrlist:
+            Q = chargecalculator(Ainv,Vin,Vout,typestr)/Ry
+            # print(Q[0,0])
+            V = voltagematrix(Ainv,Q,Nx,Ny,Vin,Vout,typestr)
+            # savevoltagematrix(V,Nx,Ny,'c',Vin,Vout,T,Rx,Ry)
+            # plt.contourf(V,cmap='RdGy')
+            # plt.show()
+            Vlist = [T,Rx,Ry,np.abs((V[0,Vin]-V[1,Vin])/Ry)]
+            for i in range(1,Nx+1):
+                for j in range(1,Ny+1):
+                    Vlist.append(V[j-1,i-1])
+            if typestr == 'c':
+                datac.append(Vlist)
+            elif typestr == 'd':
+                datad.append(Vlist)
+            elif typestr == 'x1':
+                datax1.append(Vlist)
 
     headerlist = ['T','rx','ry','I'] # Header for the output file
     for i in range(1,Nx+1):
         for j in range(1,Ny+1):
             headerlist.append('V['+str(i)+','+str(j)+']')
 
-    df = pd.DataFrame(data) # Making a dataframe from the data
-    path = '../../Data/Sr327_ImplicitSimulator/'+str(Nx)+'x'+str(Ny)+'DAT/' # Output path name
-    if os.path.exists(path) == False:
-        os.mkdir(path)
-    df.to_csv(path+'Sr327_'+typestr+'_'+str(Vin)+'_to_'+str(Vout)+'.dat', index=False, header=headerlist)
+    path = '../../Data/Sr327_ImplicitSimulator/'+str(Nx)+'x'+str(Ny)+'DAT/'
+    
+    for typestr in typestrlist:
+        if typestr == 'c':
+            df = pd.DataFrame(datac) # Making a dataframe from the data
+        elif typestr == 'd':
+            df = pd.DataFrame(datad) # Making a dataframe from the data
+        elif typestr == 'x1':
+            df = pd.DataFrame(datax1) # Making a dataframe from the data
+        # Output path name
+        if os.path.exists(path) == False:
+            os.mkdir(path)
+        df.to_csv(path+'Sr327_'+typestr+'_'+str(Vin)+'_to_'+str(Vout)+'.dat', index=False, header=headerlist)
