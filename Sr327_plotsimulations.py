@@ -212,10 +212,13 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
             plt.show()
 
         if (savefile == True):
-            if experimental > 0:
-                fig.savefig('../../Plots/Sr327/Simulations/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
+            if implicit == False:
+                if experimental > 0:
+                    fig.savefig('../../Plots/Sr327/Simulations/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
+                else:
+                    fig.savefig('../../Plots/Sr327/Simulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
             else:
-                fig.savefig('../../Plots/Sr327/Simulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
+                fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
 
     else:
         x = []; y = []
