@@ -144,19 +144,23 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
                 # ax.scatter(data[0]["T"],2.65*(data[0]["V["+str(1+x)+",1]"]-data[0]["V["+str(Nx-x)+",1]"]),s=8.0,marker='.',label='Voltage '+str(x)) 
             # ax.scatter(data[0]["T"],-2.65*(data[0]["V[8,1]"]-data[0]["V["+str(Nx-7)+",1]"])/data[0]["I"],color='purple',s=8.0,marker='.',label='long c-axis') 
         if type == 'm':
-            ax.plot(data[0]["T"],2.65*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],color='C1',marker='^',label='c-axis')
-            ax.plot(data[1]["T"],2.65*(data[1][outputpin]-data[1][mirrorinputpin])/data[1]["I"],color='green',marker='^',label='diagonal')
+            scale = 0.36*data[0]["ry"][99]
+            ax.plot(data[0]["T"],(scale/((data[0][mirroroutputpin][99]-data[0][mirrorinputpin][99])/data[0]["I"][99]))*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],color='C1',marker='^',label='c-axis')
+            ax.plot(data[1]["T"],(scale/((data[1][outputpin][99]-data[1][mirrorinputpin][99])/data[1]["I"][99]))*(data[1][outputpin]-data[1][mirrorinputpin])/data[1]["I"],color='green',marker='^',label='diagonal')
             ax.plot(data[2]["T"],(Ny/(Nx-output-input))*2.65*(data[2][mirroroutputpin]-data[2][outputpin])/data[2]["I"],color='red',marker='^',label='in-plane')
             #ax.plot(data[2]["T"],2.65*(data[2][mirrorinputpin]-data[2][inputpin])/data[2]["I"],color='red',marker='^')
             if L_check.is_file() == True:
-                ax.plot(data[3]["T"],-(0.4/2.45)*2.65*(data[3]["V[8,1]"]-data[3]["V["+str(Nx-7)+",1]"])/data[3]["I"],color='purple',marker='^',label='long c-axis') 
+                ax.plot(data[3]["T"],(scale/((data[3]["V[8,1]"][99]-data[3]["V["+str(Nx-7)+",1]"][99])/data[3]["I"][99]))*(data[3]["V[8,1]"]-data[3]["V["+str(Nx-7)+",1]"])/data[3]["I"],color='purple',marker='^',label='long c-axis') 
         RVTaxes(ax)
         plt.show()
-        if savefile == True:
-            if experimental > 0:
-                fig.savefig('../../Plots/Sr327/Simulations/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
+        if (savefile == True):
+            if implicit == False:
+                if experimental > 0:
+                    fig.savefig('../../Plots/Sr327/Simulations/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
+                else:
+                    fig.savefig('../../Plots/Sr327/Simulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
             else:
-                fig.savefig('../../Plots/Sr327/Simulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
+                fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
 
     elif gif == False:
         x = []; y = []
@@ -275,11 +279,11 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
                             contouraxes(ax,heatmap,Nx,Ny,2,mixed='top')
                         # contouraxes(ax,heatmap,Nx,Ny,0,True)
                         
-
-                    main_ax.plot(data[0]["T"][:i+1],2.65*(data[0][mirroroutputpin][:i+1]-data[0][mirrorinputpin][:i+1])/data[0]["I"][:i+1],color='orange',marker='^',label='c-axis')
-                    main_ax.plot(data[1]["T"][:i+1],2.65*(data[1][outputpin][:i+1]-data[1][mirrorinputpin][:i+1])/data[1]["I"][:i+1],color='green',marker='^',label='diagonal')
+                    scale = 0.36*data[0]["ry"][99]
+                    main_ax.plot(data[0]["T"][:i+1],(scale/((data[0][mirroroutputpin][99]-data[0][mirrorinputpin][99])/data[0]["I"][99]))*(data[0][mirroroutputpin][:i+1]-data[0][mirrorinputpin][:i+1])/data[0]["I"][:i+1],color='orange',marker='^',label='c-axis')
+                    main_ax.plot(data[1]["T"][:i+1],(scale/((data[1][outputpin][99]-data[1][mirrorinputpin][99])/data[1]["I"][99]))*(data[1][outputpin][:i+1]-data[1][mirrorinputpin][:i+1])/data[1]["I"][:i+1],color='green',marker='^',label='diagonal')
                     main_ax.plot(data[2]["T"][:i+1],2.65*(data[2][mirroroutputpin][:i+1]-data[2][outputpin][:i+1])/data[2]["I"][:i+1],color='red',marker='^',label='in-plane')
-                    main_ax.plot(data[3]["T"][:i+1],-(0.4/2.45)*2.65*(data[3]["V[8,1]"][:i+1]-data[3]["V["+str(Nx-7)+",1]"][:i+1])/data[3]["I"][:i+1],color='purple',marker='^',label='long c-axis') 
+                    main_ax.plot(data[3]["T"][:i+1],(scale/((data[3]["V[8,1]"][99]-data[3]["V["+str(Nx-7)+",1]"][99])/data[3]["I"][99]))*(data[3]["V[8,1]"][:i+1]-data[3]["V["+str(Nx-7)+",1]"][:i+1])/data[3]["I"][:i+1],color='purple',marker='^',label='long c-axis') 
                     RVTaxes(main_ax,True)
                     fig.savefig(gifdir+str(i)+".png")
                     images.append(imageio.imread(gifdir+str(i)+".png"))

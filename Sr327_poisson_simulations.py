@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from math import exp, ceil
+from math import exp, ceil, floor
 from multiprocessing import Pool
 from itertools import product, repeat, permutations, chain
 from Sr327_simulation import rx, newry, R_ab, newR_c
@@ -62,20 +62,8 @@ def poissonmatrix(Nx,Ny,rx,ry,plot=False):
 #     Q[-V_out] = 1
 #     return Q
 
-def chargecalculator(Ainv,Vin,Vout,typestr = 'c'):
-    if typestr == 'c':
-        M = np.matrix([[Ainv[Vin,Vin],Ainv[Vin,-(Nx-Vout)]],[Ainv[-(Nx-Vout),Vin],Ainv[-(Nx-Vout),-(Nx-Vout)]]])
-    elif typestr == 'd':
-        M = np.matrix([[Ainv[Vin,Vin],Ainv[Vin,-Vout]],[Ainv[-Vout,Vin],Ainv[-Vout,-Vout]]])
-    elif typestr == 'x1':
-        M = np.matrix([[Ainv[Vin,Vin],Ainv[Vin,Nx-Vin]],[Ainv[Nx-Vin,Vin],Ainv[Nx-Vin,Nx-Vin]]])
-    Minv = np.linalg.inv(M)
-    V = np.array([-0.5,0.5])
-    Q = np.dot(Minv,V)
-    return Q
-
-def chargecalculatorL(Ainv,L):
-    M = np.matrix([[ Ainv[i,j] for i in L ] for j in L])
+def chargecalculator(Ainv,L):
+    M = np.matrix([[ Ainv[j,i] for i in L ] for j in L])
     Minv = np.linalg.inv(M)
     V = []
     for i in range(0,int(len(L)/2)):
@@ -86,22 +74,7 @@ def chargecalculatorL(Ainv,L):
     Q = np.dot(Minv,V)
     return Q
 
-def voltagematrix(Ainv,Q,Nx,Ny,Vin,Vout,typestr = 'c'):
-    Qprime = np.zeros(Nx*Ny)
-    if typestr == 'c':
-        Qprime[Vin] = Q[0,0]
-        Qprime[-(Nx-Vout)] = Q[0,1]
-    if typestr == 'd':
-        Qprime[Vin] = Q[0,0]
-        Qprime[-Vout] = Q[0,1]
-    if typestr == 'x1':
-        Qprime[Vin] = Q[0,0]
-        Qprime[Nx-Vin] = Q[0,1]    
-    V = np.dot(Ainv,Qprime)
-    V = V.reshape(Ny,Nx)
-    return(V)
-
-def voltagematrixL(Ainv,Q,Nx,Ny,L):
+def voltagematrix(Ainv,Q,Nx,Ny,L):
     Qprime = np.zeros(Nx*Ny)
     for count,value in enumerate(L):
         Qprime[value] = Q[0,count]
@@ -109,48 +82,55 @@ def voltagematrixL(Ainv,Q,Nx,Ny,L):
     V = V.reshape(Ny,Nx)
     return(V)
 
+def inputlist(typestr,Nx,Ny,Vin,Vout):
+    if typestr == 'c':
+        L = [Vin,-(Nx-Vout)]
+    elif typestr == 'd':
+        L = [Vin,-Vout]
+    elif typestr == 'x1':
+        L = [Vin,Nx-Vin]
+    elif typestr == 'L':
+        L1 = [i*Nx for i in range(1,Ny-1)]
+        L2 = [(i+1)*Nx-1 for i in range(1,Ny-1)]
+        L = L1+L2
+    else:
+        print('ERROR')
+    return L
+
 # def savevoltagematrix(V,Nx,Ny,typestr,I_in,I_out,T,Rx,Ry):
 
 if __name__ == "__main__":
     T = 2; Vin = 5; Vout = 6
-    data = []; datac = []; datad = []; datax1 =[]; dataL = []
+    datac = []; datad = []; datax1 = []; dataL = []
+    data = [ datac,datad,datax1,dataL]
     N = 100
     # typestr = 'c'
     typestrlist = ['c','d','x1','L']
+    iolist = [inputlist(t,Nx,Ny,Vin,Vout) for t in typestrlist]
     for Tctr in range(0,N):
         T = 300.0-Tctr*(300.-2.)/(N-1)
         Rx = rx(T,Nx)/2; Ry = newry(T,Ny)
         Ainv = poissonmatrix(Nx,Ny,Rx,Ry)
-        for typestr in typestrlist:
-            if typestr == 'L':
-                AinvL = poissonmatrix(Nx,Ny,Ry,Rx)
-                L1 = [i*Nx for i in range(1,Ny-1)]
-                L2 = [(i+1)*Nx-1 for i in range(1,Ny-1)]
-                L = L1+L2
-                Q = chargecalculatorL(AinvL,L)
-                V = voltagematrixL(AinvL,Q,Nx,Ny,L)
-                Vlist = [T,Rx,Ry,np.abs((V[1,0]-V[1,Nx-1])/Ry)]
-                for i in range(1,Nx+1):
-                    for j in range(1,Ny+1):
-                        Vlist.append(V[j-1,i-1])
-                dataL.append(Vlist)
-            else:
-                Q = chargecalculator(Ainv,Vin,Vout,typestr)/Ry
-                # print(Q[0,0])
-                V = voltagematrix(Ainv,Q,Nx,Ny,Vin,Vout,typestr)
-                # savevoltagematrix(V,Nx,Ny,'c',Vin,Vout,T,Rx,Ry)
-                # plt.contourf(V,cmap='RdGy')
-                # plt.show()
-                Vlist = [T,Rx,Ry,np.abs((V[0,Vin]-V[1,Vin])/Ry)]
-                for i in range(1,Nx+1):
-                    for j in range(1,Ny+1):
-                        Vlist.append(V[j-1,i-1])
-                if typestr == 'c':
-                    datac.append(Vlist)
-                elif typestr == 'd':
-                    datad.append(Vlist)
-                elif typestr == 'x1':
-                    datax1.append(Vlist)
+        AinvL = poissonmatrix(Nx,Ny,Ry,Rx)
+        Alist = [Ainv, Ainv, Ainv, AinvL]
+        for count, typestr in enumerate(typestrlist):
+            Q = chargecalculator(Alist[count],iolist[count])
+            V = voltagematrix(Alist[count],Q,Nx,Ny,iolist[count])
+
+            # savevoltagematrix(V,Nx,Ny,'c',Vin,Vout,T,Rx,Ry)
+            # plt.contourf(V,cmap='RdGy')
+            # plt.show()
+
+            if (typestr == 'c')|(typestr == 'd'): 
+                Vlist = [T,Rx,Ry,np.abs((V[0,iolist[count][0]]-V[1,iolist[count][0]])/Ry)]
+            elif typestr == 'x1': 
+                Vlist = [T,Rx,Ry,np.abs((V[0,iolist[count][0]]-V[0,iolist[count][0]+1])/Ry)]
+            elif typestr == 'L':
+                Vlist = [T,Rx,Ry,np.abs((V[floor(Ny/2),0]-V[floor(Ny/2),1])/Ry)]
+            for i in range(1,Nx+1):
+                for j in range(1,Ny+1):
+                    Vlist.append(V[j-1,i-1])
+            data[count].append(Vlist)
 
     headerlist = ['T','rx','ry','I'] # Header for the output file
     for i in range(1,Nx+1):
@@ -159,15 +139,8 @@ if __name__ == "__main__":
 
     path = '../../Data/Sr327_ImplicitSimulator/'+str(Nx)+'x'+str(Ny)+'DAT/'
     
-    for typestr in typestrlist:
-        if typestr == 'c':
-            df = pd.DataFrame(datac) # Making a dataframe from the data
-        elif typestr == 'd':
-            df = pd.DataFrame(datad) # Making a dataframe from the data
-        elif typestr == 'x1':
-            df = pd.DataFrame(datax1) # Making a dataframe from the data
-        elif typestr == 'L':
-            df = pd.DataFrame(dataL) # Making a dataframe from the data
+    for count, typestr in enumerate(typestrlist):
+        df = pd.DataFrame(data[count]) # Making a dataframe from the data
         # Output path name
         if os.path.exists(path) == False:
             os.mkdir(path)
