@@ -10,7 +10,7 @@ from Sr327_simulation import rx, newry, R_ab, newR_c
 
 Nx = 24
 Ny = 5
-scale = 1
+scale = 10**(0)
 
 # Set up and invert the matrix
 def poissonmatrix(Nx,Ny,rx,ry,plot=False):
@@ -64,9 +64,9 @@ def poissonmatrix(Nx,Ny,rx,ry,plot=False):
     return Ainv
 
 # Set up and decompose the matrix
-def poissonmatrixLU(Nx,Ny,rx,ry,plot=False):
+def poissonmatrixLU(Nx,Ny,rx,ry):
     N = Nx*Ny
-    A = np.zeros((N,N),dtype=np.longlong)
+    A = np.zeros((N,N))
     gamma = ry/rx
 
     # Diagonal
@@ -96,8 +96,8 @@ def poissonmatrixLU(Nx,Ny,rx,ry,plot=False):
             A[i+Nx*(j+1),i+Nx*j]=1
     
     P, L, U = scipy.linalg.lu(A)
-    L = np.linalg.inv(L)
-    U = np.linalg.inv(U)
+    L = scipy.linalg.inv(L)
+    U = scipy.linalg.inv(U)
     return A,L,U
 
 # def boundaryconditions(Nx,Ny,V_in,V_out):
@@ -117,6 +117,23 @@ def chargecalculator(Ainv,L,Rc):
     Q = scipy.linalg.solve(M,V)
     return Q
 
+def NEWchargecalculator(Linv,Uinv,L,N,Rc):
+    Nq = len(L)
+    Selector = np.zeros((N,Nq))
+    for count,value in enumerate(L):
+        Selector[value,count] = 1
+    SelectorT = np.transpose(Selector)
+    M = np.matmul(SelectorT,np.matmul(Uinv,np.matmul(Linv,Selector)))
+    V = []
+    for i in range(0,int(Nq/2)):
+        V.append(-0.5*scale/Rc)
+    for i in range(0,int(Nq/2)):
+        V.append(0.5*scale/Rc)
+    V = np.array(V)
+    lu, piv = scipy.linalg.lu_factor(M)
+    Q = scipy.linalg.lu_solve((lu, piv),V)
+    return Q
+
 def voltagematrix(Ainv,L,Q,Nx,Ny):
     Qprime = np.zeros(Nx*Ny)
     for count,value in enumerate(L):
@@ -131,6 +148,15 @@ def voltagematrixLU(Linv,Uinv,L,Q,Nx,Ny):
         Qprime[value] = Q[count]
     b = np.dot(Linv,Qprime)
     V = np.dot(Uinv,b)
+    V = V.reshape(Ny,Nx)
+    return(V)
+
+def NEWvoltagematrix(A,L,Q,Nx,Ny):
+    Qprime = np.zeros(Nx*Ny)
+    for count,value in enumerate(L):
+        Qprime[value] = Q[count]
+    lu, piv = scipy.linalg.lu_factor(A)
+    V = scipy.linalg.lu_solve((lu, piv),Qprime)
     V = V.reshape(Ny,Nx)
     return(V)
 
@@ -184,18 +210,24 @@ if __name__ == "__main__":
         for count, typestr in enumerate(typestrlist):
             # Q = chargecalculator(Alist[count],iolist[count],Rc[count])
             # V = voltagematrix(Alist[count],iolist[count],Q,Nx,Ny)
-            Q = chargecalculator(np.matmul(LUlist[count][1],LUlist[count][0]),iolist[count],Rc[count])
-            # V = voltagematrixLU(LUlist[count][0],LUlist[count][1],iolist[count],Q,Nx,Ny)
-            V = voltagematrixSolve(Alist[count],iolist[count],Q,Nx,Ny)
+            # Q = chargecalculator(np.matmul(LUlist[count][1],LUlist[count][0]),iolist[count],Rc[count])
+            Q = NEWchargecalculator(LUlist[count][0],LUlist[count][1],iolist[count],Nx*Ny,Rc[count])
+            V = voltagematrixLU(LUlist[count][0],LUlist[count][1],iolist[count],Q,Nx,Ny)
+            # V = NEWvoltagematrix(Alist[count],iolist[count],Q,Nx,Ny)
+            # V = voltagematrixSolve(Alist[count],iolist[count],Q,Nx,Ny)
 
             # plt.contourf(V,cmap='RdGy')
             # plt.show()
 
-            if (typestr == 'c')|(typestr == 'd')|(typestr == 'x1'): 
-                # Vlist = [T,Rx,Ry,np.abs((V[0,iolist[count][0]]-V[1,iolist[count][0]])/Ry)]
+            if (typestr == 'c'): 
+                Vlist = [T,Rx,Ry,np.abs((V[0,iolist[count][0]]-V[1,iolist[count][0]])/Ry)]
+                # Vlist = [T,Rx,Ry,np.abs(Q[0])]
+            elif (typestr == 'd'): 
+                Vlist = [T,Rx,Ry,np.abs((V[0,iolist[count][0]]-V[1,iolist[count][0]])/Ry)]
+                # Vlist = [T,Rx,Ry,np.abs(Q[0])]
+            elif typestr == 'x1': 
+                # Vlist = [T,Rx,Ry,np.abs((V[0,iolist[count][0]]-V[0,iolist[count][0]+1])/Ry)]
                 Vlist = [T,Rx,Ry,np.abs(Q[0])]
-            # elif typestr == 'x1': 
-            #     Vlist = [T,Rx,Ry,np.abs((V[0,iolist[count][0]]-V[0,iolist[count][0]+1])/Ry)]
             elif typestr == 'L':
                 Vlist = [T,Rx,Ry,np.abs((V[floor(Ny/2),0]-V[floor(Ny/2),1])/Ry)]
             for i in range(1,Nx+1):
