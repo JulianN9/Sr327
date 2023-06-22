@@ -8,8 +8,9 @@ from math import floor
 # from itertools import product, repeat, permutations, chain
 from Sr327_simulation import rx, newry, R_ab, newR_c
 
-Nx = 24
-Ny = 5
+meshsize = 2
+Nx = 12*meshsize
+Ny = 2*meshsize+1
 scale = 10**(0)
 
 # Set up and invert the matrix
@@ -100,24 +101,7 @@ def poissonmatrixLU(Nx,Ny,rx,ry):
     U = scipy.linalg.inv(U)
     return A,L,U
 
-# def boundaryconditions(Nx,Ny,V_in,V_out):
-#     Q = np.zeros(Nx*Ny)
-#     Q[V_in] = 1
-#     Q[-V_out] = 1
-#     return Q
-
-def chargecalculator(Ainv,L,Rc):
-    M = np.matrix([[ Ainv[j,i] for i in L ] for j in L])
-    V = []
-    for i in range(0,int(len(L)/2)):
-        V.append(-0.5*scale/Rc)
-    for i in range(0,int(len(L)/2)):
-        V.append(0.5*scale/Rc)
-    V = np.array(V)
-    Q = scipy.linalg.solve(M,V)
-    return Q
-
-def NEWchargecalculator(Linv,Uinv,L,N,Rc):
+def chargecalculator(Linv,Uinv,L,N,Rc):
     Nq = len(L)
     Selector = np.zeros((N,Nq))
     for count,value in enumerate(L):
@@ -134,38 +118,14 @@ def NEWchargecalculator(Linv,Uinv,L,N,Rc):
     Q = scipy.linalg.lu_solve((lu, piv),V)
     return Q
 
-def voltagematrix(Ainv,L,Q,Nx,Ny):
-    Qprime = np.zeros(Nx*Ny)
-    for count,value in enumerate(L):
-        Qprime[value] = Q[count]
-    V = np.dot(Ainv,Qprime)
-    V = V.reshape(Ny,Nx)
-    return(V)
-
-def voltagematrixLU(Linv,Uinv,L,Q,Nx,Ny):
+def voltagematrix(Linv,Uinv,L,Q,Nx,Ny):
     Qprime = np.zeros(Nx*Ny)
     for count,value in enumerate(L):
         Qprime[value] = Q[count]
     b = np.dot(Linv,Qprime)
     V = np.dot(Uinv,b)
-    V = V.reshape(Ny,Nx)
-    return(V)
-
-def NEWvoltagematrix(A,L,Q,Nx,Ny):
-    Qprime = np.zeros(Nx*Ny)
-    for count,value in enumerate(L):
-        Qprime[value] = Q[count]
-    lu, piv = scipy.linalg.lu_factor(A)
-    V = scipy.linalg.lu_solve((lu, piv),Qprime)
-    V = V.reshape(Ny,Nx)
-    return(V)
-
-def voltagematrixSolve(A,L,Q,Nx,Ny):
-    Qprime = np.zeros(Nx*Ny)
-    for count,value in enumerate(L):
-        Qprime[value] = Q[count]
-    V = scipy.linalg.solve(A,Qprime,assume_a='sym')
-    V = V.reshape(Ny,Nx)
+    # print(type(V))
+    # V = V.reshape(Ny,Nx)
     return(V)
 
 def inputlist(typestr,Nx,Ny,Vin,Vout):
@@ -182,6 +142,33 @@ def inputlist(typestr,Nx,Ny,Vin,Vout):
     else:
         print('ERROR')
     return L
+
+def convergence_speed(T):
+   cs = 10/(1+np.exp(-(1/40)*(T-150)))
+   return cs
+
+# Convergence functions which give the final values of voltage across the lattice, c is for c-axis setup, d is for diagonal, x1 and x2 are for in-plane, long and short
+def converge(V, A, L, T, RX, RY):
+    # cs = convergence_speed(T) # Get convergence speed
+    # rxt = rx(T,Nx); ryt = newry(T,Ny) # Get strength of resistors
+    err = 1.0; ctr = 0 # This defines the change between the guess pin and it's neighbors and the count, these are used to determine convergence.
+    while ((err > 1.0e-30)|(ctr<1000))&(ctr<200000):
+        dQ = np.matmul((1/RY)*A,V)
+        V = dQ+V
+        for count, value in enumerate(L):
+            if count < floor(len(L)/2):
+                V[value] = -0.5
+            else:
+                V[value] = 0.5
+        err = np.abs(np.sum(dQ)/(Nx*Ny))
+        # print(err)
+        ctr += 1
+    Vlist = [T,RX,RY,dQ[L[0]]] # Setting the output lists
+    V = V.reshape(Ny,Nx)
+    for i in range(1,Nx+1):
+        for j in range(1,Ny+1):
+            Vlist.append(V[j-1,i-1])
+    return Vlist
 
 # def savevoltagematrix(V,Nx,Ny,typestr,I_in,I_out,T,Rx,Ry):
 
@@ -208,14 +195,9 @@ if __name__ == "__main__":
         LUlist = [[L,U],[L,U],[L,U],[LL,UL]]
         Rc = [Ry,Ry,Ry,Rx]
         for count, typestr in enumerate(typestrlist):
-            # Q = chargecalculator(Alist[count],iolist[count],Rc[count])
-            # V = voltagematrix(Alist[count],iolist[count],Q,Nx,Ny)
-            # Q = chargecalculator(np.matmul(LUlist[count][1],LUlist[count][0]),iolist[count],Rc[count])
-            Q = NEWchargecalculator(LUlist[count][0],LUlist[count][1],iolist[count],Nx*Ny,Rc[count])
-            V = voltagematrixLU(LUlist[count][0],LUlist[count][1],iolist[count],Q,Nx,Ny)
-            # V = NEWvoltagematrix(Alist[count],iolist[count],Q,Nx,Ny)
-            # V = voltagematrixSolve(Alist[count],iolist[count],Q,Nx,Ny)
-
+            Q = chargecalculator(LUlist[count][0],LUlist[count][1],iolist[count],Nx*Ny,Rc[count])
+            V = voltagematrix(LUlist[count][0],LUlist[count][1],iolist[count],Q,Nx,Ny)
+            V = V.reshape(Ny,Nx)
             # plt.contourf(V,cmap='RdGy')
             # plt.show()
 
@@ -234,6 +216,10 @@ if __name__ == "__main__":
                 for j in range(1,Ny+1):
                     Vlist.append(V[j-1,i-1])
             data[count].append(Vlist)
+            # if typestr != 'L':
+            #     data[count].append(converge(V, Alist[count], iolist[count], T, Rx, Ry))
+            # else:
+            #     data[count].append(converge(V, Alist[count], iolist[count], T, Ry, Rx))
 
     headerlist = ['T','rx','ry','I'] # Header for the output file
     for i in range(1,Nx+1):
