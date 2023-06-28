@@ -8,7 +8,7 @@ from math import floor
 # from itertools import product, repeat, permutations, chain
 from Sr327_simulation import rx, newry, R_ab, newR_c
 
-meshsize = 2
+meshsize = 3
 Nx = 12*meshsize
 Ny = 2*meshsize+1
 scale = 10**(0)
@@ -178,6 +178,57 @@ def poissonmatrixSCHUR(Nx,Ny,rx,ry,plot=False):
         plt.show()
     return A,T,Z
 
+# Set up and invert the matrix
+def poissonmatrixPSEUDO(Nx,Ny,rx,ry,plot=False):
+    N = Nx*Ny
+    A = np.zeros((N,N))
+    gamma = ry/rx
+
+    # Diagonal
+    for i in range(1,Nx-1):
+        A[i+Nx*(Ny-1),i+Nx*(Ny-1)]=-2*gamma-1
+        A[i,i]=-2*gamma-1
+        for j in range(1,Ny-1):
+            A[i+Nx*j,i+Nx*j]=-2*gamma-2
+    A[Nx-1,Nx-1]=-gamma-1
+    A[0,0]=-gamma-1
+    A[Nx-1+Nx*(Ny-1),Nx-1+Nx*(Ny-1)]=-gamma-1
+    A[Nx*(Ny-1),Nx*(Ny-1)]=-gamma-1
+    for j in range(1,Ny-1):
+        A[Nx-1+Nx*j,Nx-1+Nx*j]=-gamma-2
+        A[Nx*j,Nx*j]=-gamma-2
+
+    # Tri-Diagonal
+    for i in range(0,Nx-1):
+        for j in range(0,Ny):
+            A[i+Nx*j+1,i+Nx*j]=gamma
+            A[i+Nx*j,i+Nx*j+1]=gamma
+    
+    # Off-Diagonal
+    for j in range(0,Ny-1):
+        for i in range(0,Nx):
+            A[i+Nx*j,i+Nx*(j+1)]=1
+            A[i+Nx*(j+1),i+Nx*j]=1
+    
+    Ainv=np.linalg.pinv(A)   
+
+    if plot==True:
+        fig = plt.figure(figsize=(12,4))
+        plt.subplot(121)
+        plt.imshow(A,interpolation='none')
+        clb=plt.colorbar()
+        clb.set_label('Matrix elements values')
+        plt.title('Matrix A ',fontsize=24)
+        plt.subplot(122)
+        plt.imshow(Ainv,interpolation='none')
+        clb=plt.colorbar()
+        clb.set_label('Matrix elements values')
+        plt.title(r'Matrix $A^{-1}$ ',fontsize=24)
+
+        fig.tight_layout()
+        plt.show()
+    return Ainv
+
 def chargecalculator(Linv,Uinv,L,N,Rc):
     Nq = len(L)
     Selector = np.zeros((N,Nq))
@@ -185,6 +236,23 @@ def chargecalculator(Linv,Uinv,L,N,Rc):
         Selector[value,count] = 1
     SelectorT = np.transpose(Selector)
     M = np.matmul(SelectorT,np.matmul(Uinv,np.matmul(Linv,Selector)))
+    V = []
+    for i in range(0,int(Nq/2)):
+        V.append(-0.5*scale/Rc)
+    for i in range(0,int(Nq/2)):
+        V.append(0.5*scale/Rc)
+    V = np.array(V)
+    lu, piv = scipy.linalg.lu_factor(M)
+    Q = scipy.linalg.lu_solve((lu, piv),V)
+    return Q
+
+def chargecalculatorPSEUDO(Ainv,L,N,Rc):
+    Nq = len(L)
+    Selector = np.zeros((N,Nq))
+    for count,value in enumerate(L):
+        Selector[value,count] = 1
+    SelectorT = np.transpose(Selector)
+    M = np.matmul(SelectorT,np.matmul(Ainv,Selector))
     V = []
     for i in range(0,int(Nq/2)):
         V.append(-0.5*scale/Rc)
@@ -222,6 +290,16 @@ def voltagematrix(Linv,Uinv,L,Q,Nx,Ny):
     # print(type(V))
     # V = V.reshape(Ny,Nx)
     return(V)
+
+def voltagematrixPSEUDO(Ainv,L,Q,Nx,Ny):
+    Qprime = np.zeros(Nx*Ny)
+    for count,value in enumerate(L):
+        Qprime[value] = Q[count]
+    V = np.matmul(Ainv,Qprime)
+    # print(type(V))
+    # V = V.reshape(Ny,Nx)
+    return(V)
+
 
 def voltagematrixTZ(Tinv,Z,L,Q,Nx,Ny):
     Zinv = np.transpose(Z)
@@ -294,20 +372,20 @@ if __name__ == "__main__":
     for Tctr in range(0,N):
         T = 300.0-Tctr*(300.-2.)/(N-1)
         Rx = rx(T,Nx)/2; Ry = newry(T,Ny)/P
-        # Ainv = poissonmatrix(Nx,Ny,Rx,Ry,True)
-        # AinvL = poissonmatrix(Nx,Ny,Ry,Rx)
-        # Alist = [Ainv, Ainv, Ainv, AinvL]
+        Ainv = poissonmatrixPSEUDO(Nx,Ny,Rx,Ry,False)
+        AinvL = poissonmatrixPSEUDO(Nx,Ny,Ry,Rx)
+        Alist = [Ainv, Ainv, Ainv, AinvL]
         # A, T, Z = poissonmatrixSCHUR(Nx,Ny,Rx,Ry)
         # AL, TL, ZL = poissonmatrixSCHUR(Nx,Ny,Rx,Ry)
-        A, L, U = poissonmatrixLU(Nx,Ny,Rx,Ry)
-        AL, LL, UL = poissonmatrixLU(Nx,Ny,Ry,Rx)
-        Alist = [A, A, A, AL]
-        LUlist = [[L,U],[L,U],[L,U],[LL,UL]]
+        # A, L, U = poissonmatrixLU(Nx,Ny,Rx,Ry)
+        # AL, LL, UL = poissonmatrixLU(Nx,Ny,Ry,Rx)
+        # Alist = [A, A, A, AL]
+        # LUlist = [[L,U],[L,U],[L,U],[LL,UL]]
         # TZlist = [[T,Z],[T,Z],[T,Z],[TL,ZL]]
         Rc = [Ry,Ry,Ry,Rx]
         for count, typestr in enumerate(typestrlist):
-            Q = chargecalculator(LUlist[count][0],LUlist[count][1],iolist[count],Nx*Ny,Rc[count])
-            V = voltagematrix(LUlist[count][0],LUlist[count][1],iolist[count],Q,Nx,Ny)
+            Q = chargecalculatorPSEUDO(Alist[count],iolist[count],Nx*Ny,Rc[count])
+            V = voltagematrixPSEUDO(Alist[count],iolist[count],Q,Nx,Ny)
             # Q = chargecalculatorTZ(TZlist[count][0],TZlist[count][1],iolist[count],Nx*Ny,Rc[count])
             # V = voltagematrixTZ(TZlist[count][0],TZlist[count][1],iolist[count],Q,Nx,Ny)
             V = V.reshape(Ny,Nx)
