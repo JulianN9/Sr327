@@ -78,14 +78,17 @@ def contouraxes(ax,heatmap,Nx,Ny,axtitle=1,gift = False,mixed = 'none'):
         if(mixed == 'bottom'):
             ax.set_yticks([])
 
-def loadsimdata(type,Nx,Ny,input,output,experimental,implicit = False):
+def loadsimdata(type,Nx,Ny,input,output,experimental,pressure,implicit = False):
     files = []
     data = []
     path = '../../Data/Sr327_Simulator/'
     if implicit == True:
         path = '../../Data/Sr327_ImplicitSimulator/' 
     if experimental == 0:
-        folder = path+str(Nx)+'x'+str(Ny)+'DAT/'       
+        if pressure == 0:
+            folder = path+str(Nx)+'x'+str(Ny)+'DAT/'       
+        else:
+            folder = path+str(pressure)+'P'+str(Nx)+'x'+str(Ny)+'DAT/'
     else:
         folder = path+'test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'DAT/'
     L_check = Path(folder+'Sr327_L_'+str(input)+'_to_'+str(output)+'.dat')
@@ -103,13 +106,13 @@ def loadsimdata(type,Nx,Ny,input,output,experimental,implicit = False):
         data.append(pd.read_csv(fname,header=[0])) 
     return data, L_check
 
-def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimental = 0, gif = False, implicit = False):
+def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimental = 0, gif = False, pressure = 0, implicit = False):
     inputpin = "V["+str(input+1)+",1]"; outputpin = "V["+str(output+1)+","+str(Ny)+"]"
     mirrorinputpin = "V["+str(Nx-input)+",1]"; mirroroutputpin = "V["+str(Nx-output)+","+str(Ny)+"]"
     leftinput = "V[1,1]"; leftoutput = "V[1,"+str(Ny)+"]"
     middleinput = "V["+str(ceil(Nx/2))+",1]"; middleoutput = "V["+str(ceil(Nx/2))+","+str(Ny)+"]"
     righttinput = "V["+str(Nx)+",1]"; rightoutput = "V["+str(Nx)+","+str(Ny)+"]"
-    data, L_check = loadsimdata(type,Nx,Ny,input,output,experimental,implicit)
+    data, L_check = loadsimdata(type,Nx,Ny,input,output,experimental,pressure,implicit)
 
     if (contours == 0)&(gif==False):
         fig = plt.figure(figsize=(10,8))
@@ -160,7 +163,10 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
                 else:
                     fig.savefig('../../Plots/Sr327/Simulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
             else:
-                fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
+                if pressure != 0:
+                    fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(pressure)+'P'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
+                else:
+                    fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
 
     elif gif == False:
         x = []; y = []
@@ -222,7 +228,11 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
                 else:
                     fig.savefig('../../Plots/Sr327/Simulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
             else:
-                fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
+                if pressure != 0:
+                    fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(pressure)+'P'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
+                else:
+                    fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
+
 
     else:
         x = []; y = []
@@ -327,7 +337,10 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
         if implicit == False:
             imageio.mimsave('../../Plots/Sr327/Simulations/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
         else:
-            imageio.mimsave('../../Plots/Sr327/ImplicitSimulations/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
+            if pressure == 0:
+                imageio.mimsave('../../Plots/Sr327/ImplicitSimulations/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
+            else:
+                imageio.mimsave('../../Plots/Sr327/ImplicitSimulations/gif_'+str(pressure)+'P'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
         for i in range(0,100):
             os.remove(gifdir+str(i)+".png")
         os.rmdir(gifdir)
@@ -342,9 +355,10 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--pins", help="Input and output pins, i o = [i,o]", type=int, nargs=2, default=[2,3])
     parser.add_argument("-e", "--experimental", help="Experimental version number", type=int, default=0)
     parser.add_argument("-g", "--gif", help="Enables giffing the plot", action="store_true")
+    parser.add_argument("-P", "--pressure", help="Selects which pressure to use for implicit sim", type=int, default=0)
     args = parser.parse_args()
     if (args.type == 'c')|(args.type == 'd')|(args.type == 'm')|(args.type == 'x1')|(args.type == 'x2')|(args.type == 'L'):
-        main(args.pins[0],args.pins[1],args.dimensions[0],args.dimensions[1],type=args.type,contours=args.contours,savefile=args.save,experimental=args.experimental,gif=args.gif,implicit=True)
+        main(args.pins[0],args.pins[1],args.dimensions[0],args.dimensions[1],type=args.type,contours=args.contours,savefile=args.save,experimental=args.experimental,gif=args.gif,pressure=args.pressure,implicit=True)
     else:
         print("No type specified, defaulting to c-axis")
         main(args.pins[0],args.pins[1],args.dimensions[0],args.dimensions[1],contours=args.contours,savefile=args.save,experimental=args.experimental,gif=args.gif)

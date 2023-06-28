@@ -65,9 +65,9 @@ def poissonmatrix(Nx,Ny,rx,ry,plot=False):
     return Ainv
 
 # Set up and decompose the matrix
-def poissonmatrixLU(Nx,Ny,rx,ry):
+def poissonmatrixLU(Nx,Ny,rx,ry,plot=False):
     N = Nx*Ny
-    A = np.zeros((N,N))
+    A = np.zeros((N,N),dtype=np.longdouble)
     gamma = ry/rx
 
     # Diagonal
@@ -99,7 +99,84 @@ def poissonmatrixLU(Nx,Ny,rx,ry):
     P, L, U = scipy.linalg.lu(A)
     L = scipy.linalg.inv(L)
     U = scipy.linalg.inv(U)
+
+    if plot==True:
+        fig = plt.figure(figsize=(12,4))
+        plt.subplot(131)
+        plt.imshow(A,interpolation='none')
+        clb=plt.colorbar()
+        clb.set_label('Matrix elements values')
+        plt.title('Matrix A ',fontsize=24)
+        plt.subplot(132)
+        plt.imshow(U,interpolation='none')
+        clb=plt.colorbar()
+        clb.set_label('Matrix elements values')
+        plt.title(r'Matrix U ',fontsize=24)
+        plt.subplot(133)
+        plt.imshow(L,interpolation='none')
+        clb=plt.colorbar()
+        clb.set_label('Matrix elements values')
+        plt.title(r'Matrix L ',fontsize=24)
+
+        fig.tight_layout()
+        plt.show()
     return A,L,U
+
+def poissonmatrixSCHUR(Nx,Ny,rx,ry,plot=False):
+    N = Nx*Ny
+    A = np.zeros((N,N),dtype=np.longdouble)
+    gamma = ry/rx
+
+    # Diagonal
+    for i in range(1,Nx-1):
+        A[i+Nx*(Ny-1),i+Nx*(Ny-1)]=-2*gamma-1
+        A[i,i]=-2*gamma-1
+        for j in range(1,Ny-1):
+            A[i+Nx*j,i+Nx*j]=-2*gamma-2
+    A[Nx-1,Nx-1]=-gamma-1
+    A[0,0]=-gamma-1
+    A[Nx-1+Nx*(Ny-1),Nx-1+Nx*(Ny-1)]=-gamma-1
+    A[Nx*(Ny-1),Nx*(Ny-1)]=-gamma-1
+    for j in range(1,Ny-1):
+        A[Nx-1+Nx*j,Nx-1+Nx*j]=-gamma-2
+        A[Nx*j,Nx*j]=-gamma-2
+
+    # Tri-Diagonal
+    for i in range(0,Nx-1):
+        for j in range(0,Ny):
+            A[i+Nx*j+1,i+Nx*j]=gamma
+            A[i+Nx*j,i+Nx*j+1]=gamma
+    
+    # Off-Diagonal
+    for j in range(0,Ny-1):
+        for i in range(0,Nx):
+            A[i+Nx*j,i+Nx*(j+1)]=1
+            A[i+Nx*(j+1),i+Nx*j]=1
+    
+    T, Z = scipy.linalg.schur(A)
+    T = scipy.linalg.inv(T)
+
+    if plot==True:
+        fig = plt.figure(figsize=(12,4))
+        plt.subplot(131)
+        plt.imshow(A,interpolation='none')
+        clb=plt.colorbar()
+        clb.set_label('Matrix elements values')
+        plt.title('Matrix A ',fontsize=24)
+        plt.subplot(132)
+        plt.imshow(T,interpolation='none')
+        clb=plt.colorbar()
+        clb.set_label('Matrix elements values')
+        plt.title(r'Matrix T ',fontsize=24)
+        plt.subplot(133)
+        plt.imshow(Z,interpolation='none')
+        clb=plt.colorbar()
+        clb.set_label('Matrix elements values')
+        plt.title(r'Matrix Z ',fontsize=24)
+
+        fig.tight_layout()
+        plt.show()
+    return A,T,Z
 
 def chargecalculator(Linv,Uinv,L,N,Rc):
     Nq = len(L)
@@ -118,12 +195,42 @@ def chargecalculator(Linv,Uinv,L,N,Rc):
     Q = scipy.linalg.lu_solve((lu, piv),V)
     return Q
 
+def chargecalculatorTZ(Tinv,Z,L,N,Rc):
+    Zinv = np.transpose(Z)
+    Nq = len(L)
+    Selector = np.zeros((N,Nq))
+    for count,value in enumerate(L):
+        Selector[value,count] = 1
+    SelectorT = np.transpose(Selector)
+    M = np.matmul(SelectorT,np.matmul(Z,np.matmul(Tinv,np.matmul(Zinv,Selector))))
+    V = []
+    for i in range(0,int(Nq/2)):
+        V.append(-0.5*scale/Rc)
+    for i in range(0,int(Nq/2)):
+        V.append(0.5*scale/Rc)
+    V = np.array(V)
+    lu, piv = scipy.linalg.lu_factor(M)
+    Q = scipy.linalg.lu_solve((lu, piv),V)
+    return Q
+
 def voltagematrix(Linv,Uinv,L,Q,Nx,Ny):
     Qprime = np.zeros(Nx*Ny)
     for count,value in enumerate(L):
         Qprime[value] = Q[count]
     b = np.dot(Linv,Qprime)
     V = np.dot(Uinv,b)
+    # print(type(V))
+    # V = V.reshape(Ny,Nx)
+    return(V)
+
+def voltagematrixTZ(Tinv,Z,L,Q,Nx,Ny):
+    Zinv = np.transpose(Z)
+    Qprime = np.zeros(Nx*Ny)
+    for count,value in enumerate(L):
+        Qprime[value] = Q[count]
+    b = np.matmul(Zinv,Qprime)
+    c = np.matmul(Tinv,b)
+    V = np.matmul(Z,c)
     # print(type(V))
     # V = V.reshape(Ny,Nx)
     return(V)
@@ -174,6 +281,7 @@ def converge(V, A, L, T, RX, RY):
 
 if __name__ == "__main__":
     T = 2; Vin = 5; Vout = 6
+    P = 1
     datac = []; datad = []; datax1 = []; dataL = []
     data = [ datac,datad,datax1,dataL]
     N = 100
@@ -185,18 +293,23 @@ if __name__ == "__main__":
     iolist = [inputlist(t,Nx,Ny,Vin,Vout) for t in typestrlist]
     for Tctr in range(0,N):
         T = 300.0-Tctr*(300.-2.)/(N-1)
-        Rx = rx(T,Nx)/2; Ry = newry(T,Ny)
-        # Ainv = poissonmatrix(Nx,Ny,Rx,Ry)
+        Rx = rx(T,Nx)/2; Ry = newry(T,Ny)/P
+        # Ainv = poissonmatrix(Nx,Ny,Rx,Ry,True)
         # AinvL = poissonmatrix(Nx,Ny,Ry,Rx)
         # Alist = [Ainv, Ainv, Ainv, AinvL]
+        # A, T, Z = poissonmatrixSCHUR(Nx,Ny,Rx,Ry)
+        # AL, TL, ZL = poissonmatrixSCHUR(Nx,Ny,Rx,Ry)
         A, L, U = poissonmatrixLU(Nx,Ny,Rx,Ry)
         AL, LL, UL = poissonmatrixLU(Nx,Ny,Ry,Rx)
         Alist = [A, A, A, AL]
         LUlist = [[L,U],[L,U],[L,U],[LL,UL]]
+        # TZlist = [[T,Z],[T,Z],[T,Z],[TL,ZL]]
         Rc = [Ry,Ry,Ry,Rx]
         for count, typestr in enumerate(typestrlist):
             Q = chargecalculator(LUlist[count][0],LUlist[count][1],iolist[count],Nx*Ny,Rc[count])
             V = voltagematrix(LUlist[count][0],LUlist[count][1],iolist[count],Q,Nx,Ny)
+            # Q = chargecalculatorTZ(TZlist[count][0],TZlist[count][1],iolist[count],Nx*Ny,Rc[count])
+            # V = voltagematrixTZ(TZlist[count][0],TZlist[count][1],iolist[count],Q,Nx,Ny)
             V = V.reshape(Ny,Nx)
             # plt.contourf(V,cmap='RdGy')
             # plt.show()
@@ -226,8 +339,11 @@ if __name__ == "__main__":
         for j in range(1,Ny+1):
             headerlist.append('V['+str(i)+','+str(j)+']')
 
-    path = '../../Data/Sr327_ImplicitSimulator/'+str(Nx)+'x'+str(Ny)+'DAT/'
-    
+    if P!=0:
+        path = '../../Data/Sr327_ImplicitSimulator/'+str(P)+'P'+str(Nx)+'x'+str(Ny)+'DAT/'
+    else:
+        path = '../../Data/Sr327_ImplicitSimulator/'+str(Nx)+'x'+str(Ny)+'DAT/'
+
     for count, typestr in enumerate(typestrlist):
         df = pd.DataFrame(data[count]) # Making a dataframe from the data
         # Output path name
