@@ -87,7 +87,7 @@ def converge(V, A, L, T, RX, RY):
     # rxt = rx(T,Nx); ryt = newry(T,Ny) # Get strength of resistors
     err = 1.0; ctr = 0 # This defines the change between the guess pin and it's neighbors and the count, these are used to determine convergence.
     dQerr = 0; dQperr = 0
-    while ((err > 10**(-11 - floor(len(L)/2)))|(ctr<1000))&(ctr<200000):
+    while ((err > 10**(-11 - floor(len(L)/2)))|(ctr<100))&(ctr<200000):
         csp = (cs/(1+np.exp(-(1/500)*(10000-ctr))))+cs
         for count, value in enumerate(L):
             if count < floor(len(L)/2):
@@ -117,6 +117,8 @@ def simulate(Vin, Vout, P):
     datac = []; datad = []; datax1 = []; dataL = []
     data = [ datac,datad,datax1,dataL]
     N = 100
+    rng = np.random.default_rng()
+    Vrandom = 0.5*rng.standard_normal(Nx*Ny)
 
     # typestr = 'c'
     typestrlist = ['c','d','x1','L']
@@ -131,7 +133,7 @@ def simulate(Vin, Vout, P):
         Alist = [A, A, A, AL]
         Rc = [Ry,Ry,Ry,Rx]
         for count, typestr in enumerate(typestrlist):
-            V = np.zeros(Nx*Ny)
+            V = Vrandom
             data[count].append(converge(V, Alist[count], iolist[count], T, Rx, Ry))
 
 
@@ -155,5 +157,7 @@ def simulate(Vin, Vout, P):
 
 if __name__ == "__main__":
     Vin = 5; Vout = 6 
-    for P in range(10):
-        simulate(Vin,Vout,P+1)
+    simulate(Vin,Vout,1)
+    # for P in range(10):
+        # print("P = "+str(P))
+        # simulate(Vin,Vout,P+1)

@@ -8,7 +8,7 @@ from math import floor
 # from itertools import product, repeat, permutations, chain
 from Sr327_simulation import rx, newry, R_ab, newR_c
 
-meshsize = 3
+meshsize = 2
 Nx = 12*meshsize
 Ny = 2*meshsize+1
 scale = 10**(0)
@@ -227,7 +227,7 @@ def poissonmatrixPSEUDO(Nx,Ny,rx,ry,plot=False):
 
         fig.tight_layout()
         plt.show()
-    return Ainv
+    return A, Ainv
 
 def chargecalculator(Linv,Uinv,L,N,Rc):
     Nq = len(L)
@@ -329,26 +329,32 @@ def inputlist(typestr,Nx,Ny,Vin,Vout):
     return L
 
 def convergence_speed(T):
-   cs = 10/(1+np.exp(-(1/40)*(T-150)))
+   cs = 200/(1+np.exp(-(1/40)*(T-150)))
    return cs
 
 # Convergence functions which give the final values of voltage across the lattice, c is for c-axis setup, d is for diagonal, x1 and x2 are for in-plane, long and short
 def converge(V, A, L, T, RX, RY):
-    # cs = convergence_speed(T) # Get convergence speed
-    # rxt = rx(T,Nx); ryt = newry(T,Ny) # Get strength of resistors
+    cs = convergence_speed(T) # Get convergence speed
     err = 1.0; ctr = 0 # This defines the change between the guess pin and it's neighbors and the count, these are used to determine convergence.
-    while ((err > 1.0e-30)|(ctr<1000))&(ctr<200000):
-        dQ = np.matmul((1/RY)*A,V)
-        V = dQ+V
+    dQerr = 0; dQperr = 0
+    while ((err > 10**(-11 - floor(len(L)/2)))|(ctr<100))&(ctr<200000):
+        csp = (cs/(1+np.exp(-(1/500)*(10000-ctr))))+cs
         for count, value in enumerate(L):
             if count < floor(len(L)/2):
                 V[value] = -0.5
             else:
                 V[value] = 0.5
-        err = np.abs(np.sum(dQ)/(Nx*Ny))
+        dQ = np.matmul(A,V)
+        V = csp*dQ + V
+
+        dQperr = dQerr
+        dQerr = np.sum(np.abs(dQ))/(Nx*Ny)
+        err = dQperr - dQerr
+        # err = dQerr
         # print(err)
+
         ctr += 1
-    Vlist = [T,RX,RY,dQ[L[0]]] # Setting the output lists
+    Vlist = [T,RX,RY,np.sum([dQ[L[i]] for i in range(floor(len(L)/2))])/floor(len(L)/2)] # Setting the output lists
     V = V.reshape(Ny,Nx)
     for i in range(1,Nx+1):
         for j in range(1,Ny+1):
@@ -372,45 +378,26 @@ if __name__ == "__main__":
     for Tctr in range(0,N):
         T = 300.0-Tctr*(300.-2.)/(N-1)
         Rx = rx(T,Nx)/2; Ry = newry(T,Ny)/P
-        Ainv = poissonmatrixPSEUDO(Nx,Ny,Rx,Ry,False)
-        AinvL = poissonmatrixPSEUDO(Nx,Ny,Ry,Rx)
-        Alist = [Ainv, Ainv, Ainv, AinvL]
-        # A, T, Z = poissonmatrixSCHUR(Nx,Ny,Rx,Ry)
-        # AL, TL, ZL = poissonmatrixSCHUR(Nx,Ny,Rx,Ry)
-        # A, L, U = poissonmatrixLU(Nx,Ny,Rx,Ry)
-        # AL, LL, UL = poissonmatrixLU(Nx,Ny,Ry,Rx)
-        # Alist = [A, A, A, AL]
-        # LUlist = [[L,U],[L,U],[L,U],[LL,UL]]
-        # TZlist = [[T,Z],[T,Z],[T,Z],[TL,ZL]]
+        A, Ainv = poissonmatrixPSEUDO(Nx,Ny,Rx,Ry,False)
+        AL, AinvL = poissonmatrixPSEUDO(Nx,Ny,Ry,Rx)
+        Alist = [A, A, A, AL]
+        Ainvlist = [Ainv, Ainv, Ainv, AinvL]
         Rc = [Ry,Ry,Ry,Rx]
         for count, typestr in enumerate(typestrlist):
-            Q = chargecalculatorPSEUDO(Alist[count],iolist[count],Nx*Ny,Rc[count])
-            V = voltagematrixPSEUDO(Alist[count],iolist[count],Q,Nx,Ny)
-            # Q = chargecalculatorTZ(TZlist[count][0],TZlist[count][1],iolist[count],Nx*Ny,Rc[count])
-            # V = voltagematrixTZ(TZlist[count][0],TZlist[count][1],iolist[count],Q,Nx,Ny)
+            Q = chargecalculatorPSEUDO(Ainvlist[count],iolist[count],Nx*Ny,Rc[count])
+            V = voltagematrixPSEUDO(Ainvlist[count],iolist[count],Q,Nx,Ny)
+            dQ = np.matmul(A,V)
             V = V.reshape(Ny,Nx)
             # plt.contourf(V,cmap='RdGy')
             # plt.show()
 
-            if (typestr == 'c'): 
-                Vlist = [T,Rx,Ry,np.abs((V[0,iolist[count][0]]-V[1,iolist[count][0]])/Ry)]
-                # Vlist = [T,Rx,Ry,np.abs(Q[0])]
-            elif (typestr == 'd'): 
-                Vlist = [T,Rx,Ry,np.abs((V[0,iolist[count][0]]-V[1,iolist[count][0]])/Ry)]
-                # Vlist = [T,Rx,Ry,np.abs(Q[0])]
-            elif typestr == 'x1': 
-                # Vlist = [T,Rx,Ry,np.abs((V[0,iolist[count][0]]-V[0,iolist[count][0]+1])/Ry)]
-                Vlist = [T,Rx,Ry,np.abs(Q[0])]
-            elif typestr == 'L':
-                Vlist = [T,Rx,Ry,np.abs((V[floor(Ny/2),0]-V[floor(Ny/2),1])/Ry)]
+            npins = floor(len(iolist[count])/2)
+            Vlist = [T,Rx,Ry,np.sum([dQ[iolist[count][i]] for i in range(npins)])/npins]
             for i in range(1,Nx+1):
                 for j in range(1,Ny+1):
                     Vlist.append(V[j-1,i-1])
             data[count].append(Vlist)
-            # if typestr != 'L':
-            #     data[count].append(converge(V, Alist[count], iolist[count], T, Rx, Ry))
-            # else:
-            #     data[count].append(converge(V, Alist[count], iolist[count], T, Ry, Rx))
+            # data[count].append(converge(V,Alist[count],iolist[count],T,Rx,Ry))
 
     headerlist = ['T','rx','ry','I'] # Header for the output file
     for i in range(1,Nx+1):

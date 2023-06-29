@@ -48,7 +48,7 @@ for j in range(0,Ny-1):
         A[i+Nx*j,i+Nx*(j+1)]=1
         A[i+Nx*(j+1),i+Nx*j]=1
 
-M = sp.Matrix(A)
+M = sp.Matrix(A[:-Nx-1,:-Nx-1])
 
 print(M)
 print(M.det())
