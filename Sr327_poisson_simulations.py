@@ -14,7 +14,7 @@ Ny = 2*meshsize+1
 scale = 10**(0)
 
 # Set up and invert the matrix
-def poissonmatrix(Nx,Ny,rx,ry,plot=False):
+def poissonmatrix(Nx,Ny,rx,ry,L,plot=False):
     N = Nx*Ny
     A = np.zeros((N,N))
     gamma = ry/rx
@@ -44,7 +44,11 @@ def poissonmatrix(Nx,Ny,rx,ry,plot=False):
         for i in range(0,Nx):
             A[i+Nx*j,i+Nx*(j+1)]=1
             A[i+Nx*(j+1),i+Nx*j]=1
-    
+
+    for pin in L:
+        A[pin,:] = 0
+        A[pin,pin] = 1
+
     Ainv=np.linalg.inv(A)   
 
     if plot==True:
@@ -62,7 +66,7 @@ def poissonmatrix(Nx,Ny,rx,ry,plot=False):
 
         fig.tight_layout()
         plt.show()
-    return Ainv
+    return A, Ainv
 
 # Set up and decompose the matrix
 def poissonmatrixLU(Nx,Ny,rx,ry,plot=False):
@@ -334,18 +338,18 @@ def convergence_speed(T):
 
 # Convergence functions which give the final values of voltage across the lattice, c is for c-axis setup, d is for diagonal, x1 and x2 are for in-plane, long and short
 def converge(V, A, L, T, RX, RY):
-    cs = convergence_speed(T) # Get convergence speed
+    # cs = convergence_speed(T) # Get convergence speed
     err = 1.0; ctr = 0 # This defines the change between the guess pin and it's neighbors and the count, these are used to determine convergence.
     dQerr = 0; dQperr = 0
-    while ((err > 10**(-11 - floor(len(L)/2)))|(ctr<100))&(ctr<200000):
-        csp = (cs/(1+np.exp(-(1/500)*(10000-ctr))))+cs
+    while ((err > 10**(-7 - floor(len(L)/2)))|(ctr<100))&(ctr<200000):
+        # csp = (cs/(1+np.exp(-(1/500)*(10000-ctr))))+cs
         for count, value in enumerate(L):
             if count < floor(len(L)/2):
                 V[value] = -0.5
             else:
                 V[value] = 0.5
         dQ = np.matmul(A,V)
-        V = csp*dQ + V
+        V = dQ + V
 
         dQperr = dQerr
         dQerr = np.sum(np.abs(dQ))/(Nx*Ny)
@@ -377,15 +381,17 @@ if __name__ == "__main__":
     iolist = [inputlist(t,Nx,Ny,Vin,Vout) for t in typestrlist]
     for Tctr in range(0,N):
         T = 300.0-Tctr*(300.-2.)/(N-1)
+        print(T)
         Rx = rx(T,Nx)/2; Ry = newry(T,Ny)/P
-        A, Ainv = poissonmatrixPSEUDO(Nx,Ny,Rx,Ry,False)
-        AL, AinvL = poissonmatrixPSEUDO(Nx,Ny,Ry,Rx)
-        Alist = [A, A, A, AL]
-        Ainvlist = [Ainv, Ainv, Ainv, AinvL]
+        Rxlist = [Rx, Rx, Rx, Ry]
+        Rylist = [Ry, Ry, Ry, Rx]
+        # Alist = [A, A, A, AL]
+        # Ainvlist = [Ainv, Ainv, Ainv, AinvL]
         Rc = [Ry,Ry,Ry,Rx]
         for count, typestr in enumerate(typestrlist):
-            Q = chargecalculatorPSEUDO(Ainvlist[count],iolist[count],Nx*Ny,Rc[count])
-            V = voltagematrixPSEUDO(Ainvlist[count],iolist[count],Q,Nx,Ny)
+            A, Ainv = poissonmatrix(Nx,Ny,Rxlist[count],Rylist[count],iolist[count],False)
+            Q = chargecalculatorPSEUDO(Ainv,iolist[count],Nx*Ny,Rc[count])
+            V = voltagematrixPSEUDO(Ainv,iolist[count],Q,Nx,Ny)
             dQ = np.matmul(A,V)
             V = V.reshape(Ny,Nx)
             # plt.contourf(V,cmap='RdGy')
@@ -397,7 +403,7 @@ if __name__ == "__main__":
                 for j in range(1,Ny+1):
                     Vlist.append(V[j-1,i-1])
             data[count].append(Vlist)
-            # data[count].append(converge(V,Alist[count],iolist[count],T,Rx,Ry))
+            # data[count].append(converge(V,(1/Ry)*Alist[count],iolist[count],T,Rx,Ry))
 
     headerlist = ['T','rx','ry','I'] # Header for the output file
     for i in range(1,Nx+1):

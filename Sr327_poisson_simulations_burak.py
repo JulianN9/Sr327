@@ -58,6 +58,29 @@ def poissonmatrix(Nx,Ny,rx,ry,plot=False):
         plt.show()
     return A
 
+def voltagematrix(A,L,Nx,Ny):
+    V = np.zeros(Nx*Ny)
+    for count,value in enumerate(L):
+        if count < floor(len(L)/2):
+            V[value] = -0.5
+        else:
+            V[value] = 0.5
+
+    b = np.matmul(A,V)
+    Ar = A
+    b = np.delete(b,L,0)
+    Ar = np.delete(np.delete(Ar,L,0),L,1)
+
+    Arinv = np.linalg.inv(Ar)
+    Vr = np.matmul(Arinv,b)
+    rcount = 0
+    for i in range(Nx*Ny):
+        if (not(i in L))&(not(-Nx*Ny+i in L)):
+            V[i] = -Vr[i-rcount]
+        else:
+            rcount = rcount + 1
+    return(V)
+
 def inputlist(typestr,Nx,Ny,Vin,Vout):
     if typestr == 'c':
         L = [Vin,-(Nx-Vout)]
@@ -74,28 +97,23 @@ def inputlist(typestr,Nx,Ny,Vin,Vout):
     return L
 
 def convergence_speed(T):
-    cs = 200/(1+np.exp(-(1/40)*(T-150)))
-    # cs = 100
-    return cs
+   cs = 200/(1+np.exp(-(1/40)*(T-150)))
+   return cs
 
 # Convergence functions which give the final values of voltage across the lattice, c is for c-axis setup, d is for diagonal, x1 and x2 are for in-plane, long and short
 def converge(V, A, L, T, RX, RY):
-    # if floor(len(L)/2) > 1:
-    #     cs = 10 # Get convergence speed
-    # else:
-    cs = convergence_speed(T) # Get convergence speed
-    # rxt = rx(T,Nx); ryt = newry(T,Ny) # Get strength of resistors
+    # cs = convergence_speed(T) # Get convergence speed
     err = 1.0; ctr = 0 # This defines the change between the guess pin and it's neighbors and the count, these are used to determine convergence.
     dQerr = 0; dQperr = 0
-    while ((err > 10**(-11 - floor(len(L)/2)))|(ctr<100))&(ctr<200000):
-        csp = (cs/(1+np.exp(-(1/500)*(10000-ctr))))+cs
+    while ((err > 10**(-7 - floor(len(L)/2)))|(ctr<100))&(ctr<200000):
+        # csp = (cs/(1+np.exp(-(1/500)*(10000-ctr))))+cs
         for count, value in enumerate(L):
             if count < floor(len(L)/2):
                 V[value] = -0.5
             else:
                 V[value] = 0.5
         dQ = np.matmul(A,V)
-        V = csp*dQ + V
+        V = dQ + V
 
         dQperr = dQerr
         dQerr = np.sum(np.abs(dQ))/(Nx*Ny)
@@ -113,51 +131,67 @@ def converge(V, A, L, T, RX, RY):
 
 # def savevoltagematrix(V,Nx,Ny,typestr,I_in,I_out,T,Rx,Ry):
 
-def simulate(Vin, Vout, P):
+if __name__ == "__main__":
+    T = 300; Vin = 5; Vout = 6
+    P = 1
     datac = []; datad = []; datax1 = []; dataL = []
     data = [ datac,datad,datax1,dataL]
     N = 100
-    rng = np.random.default_rng()
-    Vrandom = 0.25*rng.standard_normal(Nx*Ny)
 
     # typestr = 'c'
     typestrlist = ['c','d','x1','L']
-    # typestrlist = ['c','d','x1']
     iolist = [inputlist(t,Nx,Ny,Vin,Vout) for t in typestrlist]
-    for Tctr in range(0,N):
-        T = 300.0-Tctr*(300.-2.)/(N-1)
-        print(T)
-        Rx = rx(T,Nx); Ry = newry(T,Ny)/(1+(P-1)/10)
-        A = poissonmatrix(Nx,Ny,Rx,Ry)
-        AL = poissonmatrix(Nx,Ny,Ry,Rx)
-        Alist = [A, A, A, AL]
-        Rc = [Ry,Ry,Ry,Rx]
-        for count, typestr in enumerate(typestrlist):
-            V = Vrandom
-            data[count].append(converge(V, Alist[count], iolist[count], T, Rx, Ry))
 
+    Rx = rx(T,Nx); Ry = newry(T,Ny)
+    A = poissonmatrix(Nx,Ny,Rx,Ry,False)
+    V = voltagematrix(A,iolist[0],Nx,Ny)
 
-    headerlist = ['T','rx','ry','I'] # Header for the output file
-    for i in range(1,Nx+1):
-        for j in range(1,Ny+1):
-            headerlist.append('V['+str(i)+','+str(j)+']')
+    dQ = [ np.matmul(A,V)[i] for i in iolist[0] ]
 
-    if P!=0:
-        path = '../../Data/Sr327_ImplicitSimulator/'+str(P)+'P'+str(Nx)+'x'+str(Ny)+'DAT/'
-    else:
-        path = '../../Data/Sr327_ImplicitSimulator/'+str(Nx)+'x'+str(Ny)+'DAT/'
+    V = V.reshape(Ny,Nx)
 
-    for count, typestr in enumerate(typestrlist):
-        df = pd.DataFrame(data[count]) # Making a dataframe from the data
-        # Output path name
-        if os.path.exists(path) == False:
-            os.mkdir(path)
-        df.to_csv(path+'Sr327_'+typestr+'_'+str(Vin)+'_to_'+str(Vout)+'.dat', index=False, header=headerlist)
-    return 0
+    plt.contourf(V,cmap='RdGy')
+    plt.show()
 
-if __name__ == "__main__":
-    Vin = 5; Vout = 6 
-    simulate(Vin,Vout,1)
-    # for P in range(10):
-        # print("P = "+str(P))
-        # simulate(Vin,Vout,P+1)
+    # for Tctr in range(0,N):
+    #     print(T)
+    #     T = 300.0-Tctr*(300.-2.)/(N-1)
+    #     Rx = rx(T,Nx)/2; Ry = newry(T,Ny)/P
+    #     Rxlist = [Rx, Rx, Rx, Ry]
+    #     Rylist = [Ry, Ry, Ry, Rx]
+    #     # Alist = [A, A, A, AL]
+    #     # Ainvlist = [Ainv, Ainv, Ainv, AinvL]
+    #     Rc = [Ry,Ry,Ry,Rx]
+    #     for count, typestr in enumerate(typestrlist):
+    #         A, Ainv = poissonmatrix(Nx,Ny,Rxlist[count],Rylist[count],iolist[count],False)
+    #         Q = chargecalculatorPSEUDO(Ainv,iolist[count],Nx*Ny,Rc[count])
+    #         V = voltagematrixPSEUDO(Ainv,iolist[count],Q,Nx,Ny)
+    #         dQ = np.matmul(A,V)
+    #         V = V.reshape(Ny,Nx)
+    #         # plt.contourf(V,cmap='RdGy')
+    #         # plt.show()
+
+    #         npins = floor(len(iolist[count])/2)
+    #         Vlist = [T,Rx,Ry,np.sum([dQ[iolist[count][i]] for i in range(npins)])/npins]
+    #         for i in range(1,Nx+1):
+    #             for j in range(1,Ny+1):
+    #                 Vlist.append(V[j-1,i-1])
+    #         data[count].append(Vlist)
+    #         # data[count].append(converge(V,(1/Ry)*Alist[count],iolist[count],T,Rx,Ry))
+
+    # headerlist = ['T','rx','ry','I'] # Header for the output file
+    # for i in range(1,Nx+1):
+    #     for j in range(1,Ny+1):
+    #         headerlist.append('V['+str(i)+','+str(j)+']')
+
+    # if P!=0:
+    #     path = '../../Data/Sr327_ImplicitSimulator/'+str(P)+'P'+str(Nx)+'x'+str(Ny)+'DAT/'
+    # else:
+    #     path = '../../Data/Sr327_ImplicitSimulator/'+str(Nx)+'x'+str(Ny)+'DAT/'
+
+    # for count, typestr in enumerate(typestrlist):
+    #     df = pd.DataFrame(data[count]) # Making a dataframe from the data
+    #     # Output path name
+    #     if os.path.exists(path) == False:
+    #         os.mkdir(path)
+    #     df.to_csv(path+'Sr327_'+typestr+'_'+str(Vin)+'_to_'+str(Vout)+'.dat', index=False, header=headerlist)

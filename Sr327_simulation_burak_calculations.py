@@ -48,10 +48,21 @@ for j in range(0,Ny-1):
         A[i+Nx*j,i+Nx*(j+1)]=1
         A[i+Nx*(j+1),i+Nx*j]=1
 
-for i in range(0,Nx*Ny):
-    A[2,i] = 0
-# A[2,2] = 1
-M = sp.Matrix(A)
+
+L = 1
+B = np.zeros((N-1,N-1))
+B = sp.Matrix(B)
+for i in range(Nx*Ny-1):
+    for j in range(Nx*Ny-1):
+        if (i < L)&(j<L):
+            B[i,j] = A[i,j]
+        elif (i >= L)&(j<L):
+            B[i,j] = A[i+1,j]
+        elif (i < L)&(j >= L):
+            B[i,j] = A[i,j+1]
+        elif (i >= L)&(j>=L):
+            B[i,j] = A[i+1,j+1]
+M = sp.Matrix(B)
 
 print(M)
 print(M.det())
