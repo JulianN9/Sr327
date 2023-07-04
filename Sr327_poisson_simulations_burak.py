@@ -96,102 +96,62 @@ def inputlist(typestr,Nx,Ny,Vin,Vout):
         print('ERROR')
     return L
 
-def convergence_speed(T):
-   cs = 200/(1+np.exp(-(1/40)*(T-150)))
-   return cs
-
-# Convergence functions which give the final values of voltage across the lattice, c is for c-axis setup, d is for diagonal, x1 and x2 are for in-plane, long and short
-def converge(V, A, L, T, RX, RY):
-    # cs = convergence_speed(T) # Get convergence speed
-    err = 1.0; ctr = 0 # This defines the change between the guess pin and it's neighbors and the count, these are used to determine convergence.
-    dQerr = 0; dQperr = 0
-    while ((err > 10**(-7 - floor(len(L)/2)))|(ctr<100))&(ctr<200000):
-        # csp = (cs/(1+np.exp(-(1/500)*(10000-ctr))))+cs
-        for count, value in enumerate(L):
-            if count < floor(len(L)/2):
-                V[value] = -0.5
-            else:
-                V[value] = 0.5
-        dQ = np.matmul(A,V)
-        V = dQ + V
-
-        dQperr = dQerr
-        dQerr = np.sum(np.abs(dQ))/(Nx*Ny)
-        err = dQperr - dQerr
-        # err = dQerr
-        # print(err)
-
-        ctr += 1
-    Vlist = [T,RX,RY,np.sum([dQ[L[i]] for i in range(floor(len(L)/2))])/floor(len(L)/2)] # Setting the output lists
-    V = V.reshape(Ny,Nx)
-    for i in range(1,Nx+1):
-        for j in range(1,Ny+1):
-            Vlist.append(V[j-1,i-1])
-    return Vlist
-
-# def savevoltagematrix(V,Nx,Ny,typestr,I_in,I_out,T,Rx,Ry):
-
-if __name__ == "__main__":
-    T = 300; Vin = 5; Vout = 6
-    P = 1
+def simulate(Vin,Vout,P):
     datac = []; datad = []; datax1 = []; dataL = []
     data = [ datac,datad,datax1,dataL]
     N = 100
+    # Rx = rx(T,Nx); Ry = newry(T,Ny)
 
     # typestr = 'c'
     typestrlist = ['c','d','x1','L']
     iolist = [inputlist(t,Nx,Ny,Vin,Vout) for t in typestrlist]
+    for Tctr in range(0,N):
+        T = 300.0-Tctr*(300.-2.)/(N-1)
+        print(T)
+        Rx = rx(T,Nx); Ry = newry(T,Ny)/(1+(P-1)/10)
+        A = poissonmatrix(Nx,Ny,Rx,Ry,False)
+        AL = poissonmatrix(Nx,Ny,Ry,Rx)
+        Alist = [A, A, A, AL]
+        Rc = [Ry,Ry,Ry,Rx]
+        for count, typestr in enumerate(typestrlist):
+            V = voltagematrix(Alist[count],iolist[count],Nx,Ny)
 
-    Rx = rx(T,Nx); Ry = newry(T,Ny)
-    A = poissonmatrix(Nx,Ny,Rx,Ry,False)
-    V = voltagematrix(A,iolist[0],Nx,Ny)
+            # dQ = [ np.matmul(A,V)[i] for i in iolist[count] ]
+            dQ = np.matmul(A,V)
 
-    dQ = [ np.matmul(A,V)[i] for i in iolist[0] ]
+            V = V.reshape(Ny,Nx)
 
-    V = V.reshape(Ny,Nx)
+            if typestr == 'L':
+                Vlist = [T,Rx,Ry,np.abs((V[floor(Ny/2),0]-V[floor(Ny/2),1])/Ry)]
+            else:
+                Vlist = [T,Rx,Ry,np.sum(np.abs(dQ[iolist[count]]))/len(iolist[count])]
+            for i in range(1,Nx+1):
+                for j in range(1,Ny+1):
+                    Vlist.append(V[j-1,i-1])
+            data[count].append(Vlist)
+            # data[count].append(converge(V,(1/Ry)*Alist[count],iolist[count],T,Rx,Ry))
 
-    plt.contourf(V,cmap='RdGy')
-    plt.show()
+    headerlist = ['T','rx','ry','I'] # Header for the output file
+    for i in range(1,Nx+1):
+        for j in range(1,Ny+1):
+            headerlist.append('V['+str(i)+','+str(j)+']')
 
-    # for Tctr in range(0,N):
-    #     print(T)
-    #     T = 300.0-Tctr*(300.-2.)/(N-1)
-    #     Rx = rx(T,Nx)/2; Ry = newry(T,Ny)/P
-    #     Rxlist = [Rx, Rx, Rx, Ry]
-    #     Rylist = [Ry, Ry, Ry, Rx]
-    #     # Alist = [A, A, A, AL]
-    #     # Ainvlist = [Ainv, Ainv, Ainv, AinvL]
-    #     Rc = [Ry,Ry,Ry,Rx]
-    #     for count, typestr in enumerate(typestrlist):
-    #         A, Ainv = poissonmatrix(Nx,Ny,Rxlist[count],Rylist[count],iolist[count],False)
-    #         Q = chargecalculatorPSEUDO(Ainv,iolist[count],Nx*Ny,Rc[count])
-    #         V = voltagematrixPSEUDO(Ainv,iolist[count],Q,Nx,Ny)
-    #         dQ = np.matmul(A,V)
-    #         V = V.reshape(Ny,Nx)
-    #         # plt.contourf(V,cmap='RdGy')
-    #         # plt.show()
+    if P!=0:
+        path = '../../Data/Sr327_ImplicitSimulator/'+str(P)+'P'+str(Nx)+'x'+str(Ny)+'DAT/'
+    else:
+        path = '../../Data/Sr327_ImplicitSimulator/'+str(Nx)+'x'+str(Ny)+'DAT/'
 
-    #         npins = floor(len(iolist[count])/2)
-    #         Vlist = [T,Rx,Ry,np.sum([dQ[iolist[count][i]] for i in range(npins)])/npins]
-    #         for i in range(1,Nx+1):
-    #             for j in range(1,Ny+1):
-    #                 Vlist.append(V[j-1,i-1])
-    #         data[count].append(Vlist)
-    #         # data[count].append(converge(V,(1/Ry)*Alist[count],iolist[count],T,Rx,Ry))
+    for count, typestr in enumerate(typestrlist):
+        df = pd.DataFrame(data[count]) # Making a dataframe from the data
+        # Output path name
+        if os.path.exists(path) == False:
+            os.mkdir(path)
+        df.to_csv(path+'Sr327_'+typestr+'_'+str(Vin)+'_to_'+str(Vout)+'.dat', index=False, header=headerlist)
 
-    # headerlist = ['T','rx','ry','I'] # Header for the output file
-    # for i in range(1,Nx+1):
-    #     for j in range(1,Ny+1):
-    #         headerlist.append('V['+str(i)+','+str(j)+']')
+if __name__ == "__main__":
+    Vin = 5; Vout = 6
+    P = 10
 
-    # if P!=0:
-    #     path = '../../Data/Sr327_ImplicitSimulator/'+str(P)+'P'+str(Nx)+'x'+str(Ny)+'DAT/'
-    # else:
-    #     path = '../../Data/Sr327_ImplicitSimulator/'+str(Nx)+'x'+str(Ny)+'DAT/'
-
-    # for count, typestr in enumerate(typestrlist):
-    #     df = pd.DataFrame(data[count]) # Making a dataframe from the data
-    #     # Output path name
-    #     if os.path.exists(path) == False:
-    #         os.mkdir(path)
-    #     df.to_csv(path+'Sr327_'+typestr+'_'+str(Vin)+'_to_'+str(Vout)+'.dat', index=False, header=headerlist)
+    for P in range(100):
+        print("Pressure: "+str(P+1))
+        simulate(Vin,Vout,P+1)
