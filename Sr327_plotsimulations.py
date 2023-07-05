@@ -78,41 +78,44 @@ def contouraxes(ax,heatmap,Nx,Ny,axtitle=1,gift = False,mixed = 'none'):
         if(mixed == 'bottom'):
             ax.set_yticks([])
 
-def loadsimdata(type,Nx,Ny,input,output,experimental = 0,pressure = 0,implicit = False):
+def loadsimdata(type,Nx,Ny,input,output,experimental = 0,pressure = 0,implicit = False,folder=''):
     files = []
     data = []
     path = '../../Data/Sr327_Simulator/'
     if implicit == True:
         path = '../../Data/Sr327_ImplicitSimulator/' 
-    if experimental == 0:
-        if pressure == 0:
-            folder = path+str(Nx)+'x'+str(Ny)+'DAT/'       
-        else:
-            folder = path+str(pressure)+'P'+str(Nx)+'x'+str(Ny)+'DAT/'
-    else:
-        folder = path+'test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'DAT/'
-    L_check = Path(folder+'Sr327_L_'+str(input)+'_to_'+str(output)+'.dat')
+    path = path + folder + '/'
+    L_check = Path(path+'Sr327_L_'+str(input)+'_to_'+str(output)+'.dat')
     if (type == 'c') | (type == 'm'):
-        files.append(folder+'Sr327_c_'+str(input)+'_to_'+str(output)+'.dat') 
+        files.append(path+'Sr327_c_'+str(input)+'_to_'+str(output)+'.dat') 
     if (type == 'd') | (type == 'm'):
-        files.append(folder+'Sr327_d_'+str(input)+'_to_'+str(output)+'.dat') 
+        files.append(path+'Sr327_d_'+str(input)+'_to_'+str(output)+'.dat') 
     if (type == 'x1') | (type == 'm'):
-        files.append(folder+'Sr327_x1_'+str(input)+'_to_'+str(output)+'.dat') 
+        files.append(path+'Sr327_x1_'+str(input)+'_to_'+str(output)+'.dat') 
     if (type == 'x2'):
-        files.append(folder+'Sr327_x2_'+str(input)+'_to_'+str(output)+'.dat') 
+        files.append(path+'Sr327_x2_'+str(input)+'_to_'+str(output)+'.dat') 
     if (type == 'L')| ((type == 'm')&(L_check.is_file() == True)):
-        files.append(folder+'Sr327_L_'+str(input)+'_to_'+str(output)+'.dat') 
+        files.append(path+'Sr327_L_'+str(input)+'_to_'+str(output)+'.dat') 
     for fname in files:
         data.append(pd.read_csv(fname,header=[0])) 
     return data, L_check
 
-def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimental = 0, gif = False, pressure = 0, implicit = False):
+def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimental = 0, gif = False, pressure = 0, implicit = False,folder=''):
+    if folder == '':
+        if experimental == 0:
+            if pressure == 0:
+                folder = str(Nx)+'x'+str(Ny)+'DAT'       
+            else:
+                folder = str(pressure)+'P'+str(Nx)+'x'+str(Ny)+'DAT'
+        else:
+            folder = 'test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'DAT'
+    
     inputpin = "V["+str(input+1)+",1]"; outputpin = "V["+str(output+1)+","+str(Ny)+"]"
     mirrorinputpin = "V["+str(Nx-input)+",1]"; mirroroutputpin = "V["+str(Nx-output)+","+str(Ny)+"]"
     leftinput = "V[1,1]"; leftoutput = "V[1,"+str(Ny)+"]"
     middleinput = "V["+str(ceil(Nx/2))+",1]"; middleoutput = "V["+str(ceil(Nx/2))+","+str(Ny)+"]"
     righttinput = "V["+str(Nx)+",1]"; rightoutput = "V["+str(Nx)+","+str(Ny)+"]"
-    data, L_check = loadsimdata(type,Nx,Ny,input,output,experimental,pressure,implicit)
+    data, L_check = loadsimdata(type,Nx,Ny,input,output,experimental,pressure,implicit,folder)
 
     if (contours == 0)&(gif==False):
         fig = plt.figure(figsize=(10,8))
@@ -157,16 +160,7 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
         RVTaxes(ax)
         plt.show()
         if (savefile == True):
-            if implicit == False:
-                if experimental > 0:
-                    fig.savefig('../../Plots/Sr327/Simulations/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
-                else:
-                    fig.savefig('../../Plots/Sr327/Simulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
-            else:
-                if pressure != 0:
-                    fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(pressure)+'P'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
-                else:
-                    fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'.svg')
+            fig.savefig('../../Plots/Sr327/Simulations/'+folder+'_'+type+'.svg')
 
     elif gif == False:
         x = []; y = []
@@ -222,16 +216,7 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
             plt.show()
 
         if (savefile == True):
-            if implicit == False:
-                if experimental > 0:
-                    fig.savefig('../../Plots/Sr327/Simulations/test'+str(experimental)+'_'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
-                else:
-                    fig.savefig('../../Plots/Sr327/Simulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
-            else:
-                if pressure != 0:
-                    fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(pressure)+'P'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
-                else:
-                    fig.savefig('../../Plots/Sr327/ImplicitSimulations/'+str(Nx)+'x'+str(Ny)+'_'+type+'_contour_'+str(contours)+'.svg')
+            fig.savefig('../../Plots/Sr327/Simulations/'+folder+'_'+type+'_contour_'+str(contours)+'.svg')
 
 
     else:
@@ -334,13 +319,7 @@ def main(input,output,Nx,Ny,type = 'c',contours = 0,savefile = True, experimenta
                 while ticker < 50:
                     images.append(imageio.imread(gifdir+str(99)+".png"))
                     ticker += 1
-        if implicit == False:
-            imageio.mimsave('../../Plots/Sr327/Simulations/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
-        else:
-            if pressure == 0:
-                imageio.mimsave('../../Plots/Sr327/ImplicitSimulations/gif_'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
-            else:
-                imageio.mimsave('../../Plots/Sr327/ImplicitSimulations/gif_'+str(pressure)+'P'+str(Nx)+'x'+str(Ny)+'_'+type+'.gif',images,fps=10)
+        imageio.mimsave('../../Plots/Sr327/Simulations/gif_'+folder+'_'+type+'.gif',images,fps=10)
         for i in range(0,100):
             os.remove(gifdir+str(i)+".png")
         os.rmdir(gifdir)
@@ -356,9 +335,10 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--experimental", help="Experimental version number", type=int, default=0)
     parser.add_argument("-g", "--gif", help="Enables giffing the plot", action="store_true")
     parser.add_argument("-P", "--pressure", help="Selects which pressure to use for implicit sim", type=int, default=0)
+    parser.add_argument("-f", "--folder", help="Explicitely names data folder", type=str, default='')
     args = parser.parse_args()
     if (args.type == 'c')|(args.type == 'd')|(args.type == 'm')|(args.type == 'x1')|(args.type == 'x2')|(args.type == 'L'):
-        main(args.pins[0],args.pins[1],args.dimensions[0],args.dimensions[1],type=args.type,contours=args.contours,savefile=args.save,experimental=args.experimental,gif=args.gif,pressure=args.pressure,implicit=True)
+        main(args.pins[0],args.pins[1],args.dimensions[0],args.dimensions[1],type=args.type,contours=args.contours,savefile=args.save,experimental=args.experimental,gif=args.gif,pressure=args.pressure,implicit=True,folder=args.folder)
     else:
         print("No type specified, defaulting to c-axis")
         main(args.pins[0],args.pins[1],args.dimensions[0],args.dimensions[1],contours=args.contours,savefile=args.save,experimental=args.experimental,gif=args.gif)

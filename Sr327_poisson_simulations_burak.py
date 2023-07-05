@@ -18,13 +18,13 @@ def R_c(T,p=1):  # in mu-Ohm-cm (hence factor of 1000.0)
     pf = pfactor(p)
     return 1000.0*(f*(1.0+0.02*T*T) + 0.08*T*g*(1.-f) + (8.0+0.0005*T)*(1.-g)*(1.-f))
 
-def newR_c(T,p=1):
+def newR_c(T,p=1,alpha=1,beta=1,gamma=1):
     # [A,B,C,D,E,F,G,H] = [3.04684366e-17,10.6253646,37.8301757,12.6081855,8.31419655e-02,7.26861931e-17,7.49548715,1.51364092e-02]
     [A,B,C,D,E,F,G,H] = [ 10, 10, 40, 20,  0.022, 0.1, 7.5, 0.0005*30]
     f = 1.0/(np.exp((T-A)/B) + 1.)
     g = 1.0/(np.exp((T-C)/D) + 1.)
     pf = pfactor(p)
-    return 1000.0*(f*(1.0+E*T*T) + F*T*g*(1.-f)/(pf**2) + (G+H*T)*(1.-g)*(1.-f)/pf)
+    return 1000.0*(f*(1.0+E*T*T)/pow(p,alpha) + F*T*g*(1.-f)/pow(p,beta) + (G+H*T)*(1.-g)*(1.-f)/pow(p,gamma))
 
 # a-b plane resistivity
 def R_ab(T,p=1): 
@@ -41,8 +41,8 @@ def ry(T,Ny,p=1):
     return 20*R_c(T,p)/(Ny-1) #For summer 2023 data
     # return R_c(T)/(Ny-1)
 
-def newry(T,Ny,p=1):
-    return 20*newR_c(T,p)/(Ny-1)
+def newry(T,Ny,p=1,alpha=1,beta=1,gamma=1):
+    return 20*newR_c(T,p,alpha,beta,gamma)/(Ny-1)
 
 # Set up the matrix
 def poissonmatrix(Nx,Ny,rx,ry,plot=False):
@@ -130,7 +130,7 @@ def inputlist(typestr,Nx,Ny,Vin,Vout):
     return L
 
 # Simulated for a given set of input/output pins and pressure
-def simulate(Vin,Vout,P,save=True,verbose = False):
+def simulate(Vin,Vout,P,alpha=1,beta=1,gamma=1,save=True,verbose = False,name = ''):
     meshsize = 2
     Nx = 12*meshsize
     Ny = 2*meshsize+1
@@ -144,8 +144,9 @@ def simulate(Vin,Vout,P,save=True,verbose = False):
     iolist = [inputlist(t,Nx,Ny,Vin,Vout) for t in typestrlist]
     for Tctr in range(0,N):
         T = 300.0-Tctr*(300.-2.)/(N-1)
-        print("T: "+str(T))
-        Rx = rx(T,Nx); Ry = newry(T,Ny,P)
+        if verbose == True:
+            print("T: "+str(T))
+        Rx = rx(T,Nx); Ry = newry(T,Ny,P,alpha,beta,gamma)
         A = poissonmatrix(Nx,Ny,Rx,Ry,False)
         AL = poissonmatrix(Nx,Ny,Ry,Rx)
         Alist = [A, A, A, AL]
@@ -173,10 +174,12 @@ def simulate(Vin,Vout,P,save=True,verbose = False):
         for j in range(1,Ny+1):
             headerlist.append('V['+str(i)+','+str(j)+']')
 
-    if P!=0:
-        path = '../../Data/Sr327_ImplicitSimulator/'+str(int(P))+'P'+str(Nx)+'x'+str(Ny)+'DAT/'
-    else:
-        path = '../../Data/Sr327_ImplicitSimulator/'+str(Nx)+'x'+str(Ny)+'DAT/'
+    if name =='':
+        if P!=0:
+            name = str(int(P))+'P'+str(Nx)+'x'+str(Ny)+'DAT/'
+        else:
+            name = str(Nx)+'x'+str(Ny)+'DAT/'
+    path = '../../Data/Sr327_ImplicitSimulator/'+name
 
     dflist = []
     for count, typestr in enumerate(typestrlist):
@@ -195,4 +198,4 @@ if __name__ == "__main__":
 
     for P in range(100):
         print("Pressure: "+str(P+1))
-        simulate(Vin,Vout,P+1,True,True)
+        simulate(Vin,Vout,P+1,save=True,verbose=True)
