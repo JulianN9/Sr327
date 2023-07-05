@@ -78,7 +78,7 @@ def contouraxes(ax,heatmap,Nx,Ny,axtitle=1,gift = False,mixed = 'none'):
         if(mixed == 'bottom'):
             ax.set_yticks([])
 
-def loadsimdata(type,Nx,Ny,input,output,experimental,pressure,implicit = False):
+def loadsimdata(type,Nx,Ny,input,output,experimental = 0,pressure = 0,implicit = False):
     files = []
     data = []
     path = '../../Data/Sr327_Simulator/'

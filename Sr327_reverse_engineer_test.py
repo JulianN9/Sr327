@@ -1,5 +1,5 @@
 import numpy as np
-from Sr327_simulation import newR_c, R_ab
+from Outdated.Sr327_simulation import newR_c, R_ab
 import matplotlib.pyplot as plt
 
 def Mix(T,c,a):

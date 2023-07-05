@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from math import floor
 # from multiprocessing import Pool
 # from itertools import product, repeat, permutations, chain
-from Sr327_simulation import rx, newry, R_ab, newR_c
+from Outdated.Sr327_simulation import rx, newry, R_ab, newR_c
 
 meshsize = 2
 Nx = 12*meshsize
