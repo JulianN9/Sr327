@@ -12,7 +12,7 @@ if __name__ == "__main__":
     Nx = 24; Ny = 5
     input = 5; output = 6
     # p = 1
-    type = 'L'
+    type = 'c'
     datalist = []
 
     inputpin = "V["+str(input+1)+",1]"; outputpin = "V["+str(output+1)+","+str(Ny)+"]"
@@ -49,7 +49,7 @@ if __name__ == "__main__":
             ax.scatter(dataL[0]["T"],scale*(dataL[0]["V[8,1]"]-dataL[0]["V["+str(Nx-7)+",1]"])/dataL[0]["I"],s=8.0,label='C-axis, p='+namelist[p]) 
 
     RVTaxes(ax)
-    # fig.savefig('../../Plots/Sr327/Simulations/LcaxisDiDataFitted.svg')
+    fig.savefig('../../Plots/Sr327/Simulations/PressureFitting/caxisDiDataFitted6Params.svg')
     plt.show()
     
     
