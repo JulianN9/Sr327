@@ -159,7 +159,7 @@ def simulate(Vin,Vout,P,Ptwo=1,Pthree=1,alpha=1,beta=1,gamma=1,offsetone=0,offse
             V = voltagematrix(Alist[count],iolist[count],Nx,Ny)
 
             # dQ = [ np.matmul(A,V)[i] for i in iolist[count] ]
-            dQ = np.matmul(A,V)
+            dQ = np.matmul(Alist[count],V)
 
             V = V.reshape(Ny,Nx)
 

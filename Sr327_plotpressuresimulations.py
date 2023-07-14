@@ -12,7 +12,7 @@ if __name__ == "__main__":
     Nx = 24; Ny = 5
     input = 5; output = 6
     # p = 1
-    type = 'L'
+    type = 'c'
     datalist = []
 
     inputpin = "V["+str(input+1)+",1]"; outputpin = "V["+str(output+1)+","+str(Ny)+"]"
@@ -44,12 +44,12 @@ if __name__ == "__main__":
         offset = scalepd['ScaleLow'][0]-scale*LowTr
         
         if type == 'c':
-            ax.scatter(data[0]["T"],-scale*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],s=8.0,label='C-axis, p='+namelist[p])
+            ax.plot(data[0]["T"],-scale*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],linewidth=4,ls='-.',label='C-axis, p='+namelist[p])
         elif type == 'L':
-            ax.scatter(dataL[0]["T"],scale*(dataL[0]["V[8,1]"]-dataL[0]["V["+str(Nx-7)+",1]"])/dataL[0]["I"],s=8.0,label='C-axis, p='+namelist[p]) 
+            ax.plot(dataL[0]["T"],scale*(dataL[0]["V[8,1]"]-dataL[0]["V["+str(Nx-7)+",1]"])/dataL[0]["I"],linewidth=4,ls='-.',label='C-axis, p='+namelist[p]) 
 
     RVTaxes(ax)
-    # fig.savefig('../../Plots/Sr327/Simulations/LcaxisDiDataFitted.svg')
+    # fig.savefig('../../Plots/Sr327/Simulations/PressureFitting/caxisDiDataFitted9Params.svg')
     plt.show()
     
     

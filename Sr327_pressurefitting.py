@@ -47,7 +47,7 @@ def fitpressureimplicit(data,pressure,infolist,save=True):
     ax.plot(T,rho_c(T,params[0],params[1],params[2],params[3],params[4],params[5],params[6],params[7],params[8],save=True,name='DiFitData'+str(pressure)+'DAT/'),linewidth=4,ls='-.',label=r'Fitted Simulation')
     RVTaxes(ax)
     if save == True:
-        fig.savefig('../../Plots/Sr327/Simulations/DiFitData'+str(pressure)+'Comparison.svg')
+        fig.savefig('../../Plots/Sr327/Simulations/PressureFitting/DiFitData'+str(pressure)+'Comparison.svg')
     # plt.show()
     return 0
 
