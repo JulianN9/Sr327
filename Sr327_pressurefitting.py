@@ -10,10 +10,6 @@ from Sr327_poisson_simulations_burak import simulate
 from Sr327_plotsimulations import RVTaxes
 from Sr327 import loadcxdata2016, loadcxdata2017
 
-# Best Fit Parameters:
-#Header:
-fitheader = ["Pressure","Scale","ScaleLow","ScaleHigh","Pone","Ptwo","Alpha","Beta","Gamma","Offset","xone","xtwo","wone","wtwo"]
-
 def loadfitvalues(path):
     pf = pd.read_csv(path,header=[0])
     fit = pf.head(1).values.tolist()
@@ -48,9 +44,6 @@ def fitpressureimplicit(data,pressure,infolist,save=True):
     T = np.linspace(6,291,100)
     R_i = interpolate.interp1d(T_raw,rhoc_raw)
     rhodata = R_i(T)/max(R_i(T))
-    # infolist.append(np.sum(R_i(T)))
-    # infolist.append(R_i(6))
-    # infolist.append(R_i(291))
     infolist[0:4] = [pressure,np.sum(R_i(T)),R_i(6),R_i(291)]
 
     #Fitting the data
@@ -61,9 +54,6 @@ def fitpressureimplicit(data,pressure,infolist,save=True):
     #Saving the resulting fit params
     print(params)
     print(cov)
-    # infolist.extend(fit)
-    # for i in range(len(params)):
-    #     infolist.insert(-2+i,params[i])
     fittingindex = [ fitheader.index(parameter) for parameter in ["Pone","Ptwo"] ]
     for count, index in enumerate(fittingindex[4:]):
         infolist[index] = params[count]
@@ -80,24 +70,21 @@ def fitpressureimplicit(data,pressure,infolist,save=True):
     return 0
 
 if __name__ == "__main__":
+    #Initalizing a global header variable:
+    global fitheader 
+    fitheader = ["Pressure","Scale","ScaleLow","ScaleHigh","Pone","Ptwo","Alpha","Beta","Gamma","Offset","xone","xtwo","wone","wtwo"]
+
+    #Loading the data:
     [datalist, labellist] = loadcxdata2017()
     for i in range(7):
         #Initializing and Printing the Pressure Value
-        infolist = [] 
-        data = datalist[i]
-        pressurevalue = labellist[i]
+        infolist = []; data = datalist[i]; pressurevalue = labellist[i]
         print('Pressure:'+str(pressurevalue))
 
         #Fitting
-        # infolist.append(pressurevalue)
-        # infolist[0] = pressurevalue
         fitpressureimplicit(data,pressurevalue,infolist)
 
         #Formatting and Saving the results
-        # header = ['Pressure','Scale','ScaleLow','ScaleHigh']
-        # header.extend(fitheader)
-        # for i in range(len(fitheader)):
-        #    header.append('Param '+str(i))
         infolist = np.array(infolist).reshape(1,len(fitheader))
         df = pd.DataFrame(infolist)
         df.to_csv('../../Data/Sr327_ImplicitSimulator/DiFitData'+str(pressurevalue)+'DAT/infolist.dat', index=False, header=fitheader)
