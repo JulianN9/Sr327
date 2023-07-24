@@ -53,13 +53,13 @@ if __name__ == "__main__":
         # scale = scalepd['ScaleLow'][0]/LowTr
         
         if type == 'c':
-            ax.scatter(data[0]["T"],scale*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],s=8.0,label='C-axis, p='+namelist[p])
+            ax.plot(data[0]["T"],scale*(data[0][mirroroutputpin]-data[0][mirrorinputpin])/data[0]["I"],label='C-axis, p='+namelist[p])
         elif type == 'L':
-            ax.scatter(dataL[0]["T"],-scale*(dataL[0]["V[8,1]"]-dataL[0]["V["+str(Nx-7)+",1]"])/dataL[0]["I"],s=8.0,label='C-axis, p='+namelist[p]) 
+            ax.plot(dataL[0]["T"],-scale*(dataL[0]["V[8,1]"]-dataL[0]["V["+str(Nx-7)+",1]"])/dataL[0]["I"],label='C-axis, p='+namelist[p]) 
             ax.set_yscale("log")
 
     RVTaxes(ax)
-    fig.savefig('../../Plots/Sr327/Simulations/PressureFitting/'+str(type)+'axisDiDataFitted8ParamsNew.svg')
+    # fig.savefig('../../Plots/Sr327/Simulations/PressureFitting/'+str(type)+'axisDiDataFitted8ParamsNew.svg')
     plt.show()
     
     
